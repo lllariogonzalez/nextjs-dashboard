@@ -275,3 +275,86 @@ There's a lot more to learn about these topics, including optimizing remote imag
 - [Improving Web Performance with Images (MDN)](https://developer.mozilla.org/en-US/docs/Learn/Performance/Multimedia)
 - [Web Fonts (MDN)](https://developer.mozilla.org/en-US/docs/Learn/CSS/Styling_text/Web_fonts)
 
+
+---
+
+## Creating Layouts and Pages
+
+So far, your application only has a home page. Let's learn how you can create more routes with layouts and pages.
+
+In this chapter...
+
+Here are the topics we’ll cover
+
+- Create the /login and dashboard pages using file-system routing.
+
+- Understand the role of folders and files when creating new route segments.
+
+- Create a layout that can be shared between multiple dashboard pages.
+
+- Understand what colocation, partial rendering, and root layout are.
+
+### Nested routing
+
+Next.js uses **file-system routing** where folders are used to create nested routes. Each folder represents a route segment that maps to a URL segment.
+
+![Nested routing](https://nextjs.org/_next/image?url=%2Flearn%2Fdark%2Ffolders-to-url-segments.png&w=1920&q=75&dpl=dpl_9EKEbD7jAviauyTffgoEyAkQSGtP)
+
+page.tsx is a special Next.js file that exports a React component containing the UI for the route. In your application, you already have a page file: /app/page.tsx - this is the home page which is associated with the route /.
+
+To create a nested route, you can nest folders inside each other with their own page.tsx files. For example:
+
+![Nest folders inside](https://nextjs.org/_next/image?url=%2Flearn%2Fdark%2Flogin-route.png&w=1920&q=75&dpl=dpl_9EKEbD7jAviauyTffgoEyAkQSGtP)
+
+/app/login/page.tsx is associated with the /login path. Let's create the page to see how it works!
+
+### Creating the dashboard page
+
+Create a new folder called dashboard inside /app. Then, create a new page.tsx file inside the dashboard folder with the following content:
+
+```tsx
+export default function Page() {
+  return <p>Dashboard Page</p>;
+}
+```
+Now, make sure that the development server is running and visit http://localhost:3000/dashboard.
+
+Let's practice creating more routes. In your dashboard, create two more pages:
+
+- Customers Page: The page should be accessible on http://localhost:3000/dashboard/customers. For now, it should return a \<p\>Customers Page\</p\> element.
+
+- Invoices Page: The invoices page should be accessible on http://localhost:3000/dashboard/invoices. For now, also return a \<p\>Invoices Page\</p\> element.
+
+You should have the following folder structure:
+
+![folder structure](https://nextjs.org/_next/image?url=%2Flearn%2Fdark%2Frouting-solution.png&w=1920&q=75&dpl=dpl_9EKEbD7jAviauyTffgoEyAkQSGtP)
+
+
+### Creating the dashboard layout
+
+Dashboards also have some sort of navigation that is shared across multiple pages. In Next.js, you can use a special layout.tsx file to create UI that is shared between multiple pages. Let's create a layout for the dashboard!
+
+Inside the /dashboard folder, add a new file called layout.tsx and paste the following code:
+
+```tsx
+import SideNav from '@/app/ui/dashboard/sidenav';
+ 
+export default function Layout({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex h-screen flex-col md:flex-row md:overflow-hidden">
+      <div className="w-full flex-none md:w-64">
+        <SideNav />
+      </div>
+      <div className="flex-grow p-6 md:overflow-y-auto md:p-12">{children}</div>
+    </div>
+  );
+}
+```
+
+One benefit of using layout is that on navigation, only the page components update while the layout won't re-render. In Next.js, this is called partial rendering:
+
+![Partial rendering](https://nextjs.org/_next/image?url=%2Flearn%2Fdark%2Fpartial-rendering-dashboard.png&w=1920&q=75&dpl=dpl_9EKEbD7jAviauyTffgoEyAkQSGtP)
+
+This layout is required and is called a root layout. Any UI you add to the root layout will be shared across all pages in your application. You can use the root layout to modify your \<html\> and \<body\> tags, and add metadata (you'll learn more about metadata in a later chapter).
+
+Since the new layout you've just created (/app/dashboard/layout.tsx) is unique to the dashboard pages, you don't need to add any UI to the root layout above.
