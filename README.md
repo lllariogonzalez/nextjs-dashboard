@@ -474,3 +474,199 @@ In this section, you'll find the four new tables: users, customers, invoices, re
 ### Executing queries
 
 You can switch to the "query" tab to interact with your database. This section supports standard SQL commands. For instance, inputting DROP TABLE customers will delete "customers" table along with all its data - so be careful!
+
+---
+
+## Fetching Data
+
+Let's discuss the different ways you can fetch data from your database, including using SQL and alternatives.
+
+Now that you've created and seeded your database, let's discuss the different ways you can fetch data for your application, and choose the most appropriate one for the dashboard overview page.
+
+In this chapter...
+
+Here are the topics we’ll cover
+
+- Learn about some approaches to fetching data: APIs, ORMs, SQL, etc.
+
+- How Server Components help us access our back-end resources more securely.
+
+- What network waterfalls are.
+
+- How to implement parallel data fetching using a JavaScript Pattern.
+
+### Choosing how to fetch data
+
+#### API layer
+APIs are an intermediary layer between your application code and database. There are a few cases where you might use an API:
+
+If you're using 3rd party services that provide an API.
+If you're fetching data from the client, you want to have an API layer that runs on the server to avoid exposing your database secrets to the client.
+In Next.js, you can create API endpoints using Route Handlers.
+
+#### Database queries
+When you're creating a full-stack application, you'll also need to write logic to interact with your database. For relational databases like Postgres, you can do this with SQL, or an ORM like Prisma.
+
+There are a few cases where you have to write database queries:
+
+When creating your API endpoints, you need to write logic to interact with your database.
+If you are using React Server Components (fetching data on the server), you can skip the API layer, and query your database directly without risking exposing your database secrets to the client.
+
+There are a few other ways you can fetch data with React and Next.js. We won't cover all of them due to time. If you'd like to learn more, check out the Data Fetching docs.
+
+In the next section, we'll explore how you can fetch data using a relatively new approach: async React Server Components.
+
+### Using Server Components to fetch data
+
+By default, Next.js applications use React Server Components, and you can opt into Client Components when needed. There are a few benefits to fetching data with React Server Components:
+
+Server Components execute on the server, so you can keep expensive data fetches and logic on the server and only send the result to the client.
+Server Components support promises, providing a simpler solution for asynchronous tasks like data fetching. You can use async/await syntax without reaching out for useEffect, useState or data fetching libraries.
+Since Server Components execute on the server, you can query the database directly without an additional API layer.
+
+### Using SQL
+
+For your dashboard project, you'll write database queries using the Vercel Postgres SDK and SQL. There are a few reasons why we'll be using SQL:
+
+- SQL is the industry standard for querying relational databases (e.g. ORMs generate SQL under the hood).
+
+- Having a basic understanding of SQL can help you understand the fundamentals of relational databases, allowing you to apply your knowledge to other tools.
+
+- SQL is versatile, allowing you to fetch and manipulate specific data.
+
+- The Vercel Postgres SDK provides protection against SQL injections.
+
+> You can call sql inside any Server Component. But to allow you to navigate the components more easily, we've kept all the data queries in the data.ts file, and you can import them into the components.
+
+## Fetching data for the dashboard overview page
+
+```tsx
+import { Card } from '@/app/ui/dashboard/cards';
+import RevenueChart from '@/app/ui/dashboard/revenue-chart';
+import LatestInvoices from '@/app/ui/dashboard/latest-invoices';
+import { lusitana } from '@/app/ui/fonts';
+ 
+export default async function Page() {
+  return (
+    <main>
+      <h1 className={`${lusitana.className} mb-4 text-xl md:text-2xl`}>
+        Dashboard
+      </h1>
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        {/* <Card title="Collected" value={totalPaidInvoices} type="collected" /> */}
+        {/* <Card title="Pending" value={totalPendingInvoices} type="pending" /> */}
+        {/* <Card title="Total Invoices" value={numberOfInvoices} type="invoices" /> */}
+        {/* <Card
+          title="Total Customers"
+          value={numberOfCustomers}
+          type="customers"
+        /> */}
+      </div>
+      <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-4 lg:grid-cols-8">
+        {/* <RevenueChart revenue={revenue}  /> */}
+        {/* <LatestInvoices latestInvoices={latestInvoices} /> */}
+      </div>
+    </main>
+  );
+}
+```
+
+In the code above:
+
+Page is an async component. This allows you to use await to fetch data.
+There are also 3 components which receive data: \<Card\>, \<RevenueChart\>, and \<LatestInvoices\>. They are currently commented out to prevent the application from erroring.
+
+### Fetching data for \<RevenueChart/\>
+
+To fetch data for the \<RevenueChart/\> component, import the fetchRevenue function from data.ts and call it inside your component
+
+### Fetching data for \<LatestInvoices/\>
+
+For the <LatestInvoices /> component, we need to get the latest 5 invoices, sorted by date.
+
+You could fetch all the invoices and sort through them using JavaScript. This isn't a problem as our data is small, but as your application grows, it can significantly increase the amount of data transferred on each request and the JavaScript required to sort through it.
+
+Instead of sorting through the latest invoices in-memory, you can use an SQL query to fetch only the last 5 invoices.
+
+For example, this is the SQL query from your data.ts file:
+
+```tsx
+// Fetch the last 5 invoices, sorted by date
+const data = await sql<LatestInvoiceRaw>`
+  SELECT invoices.amount, customers.name, customers.image_url, customers.email
+  FROM invoices
+  JOIN customers ON invoices.customer_id = customers.id
+  ORDER BY invoices.date DESC
+  LIMIT 5`;
+```
+
+### Fetch data for the \<Card\> components
+
+Now it's your turn to fetch data for the \<Card\> components. The cards will display the following data:
+
+- Total amount of invoices collected.
+- Total amount of invoices pending.
+- Total number of invoices.
+- Total number of customers.
+
+Again, you might be tempted to fetch all the invoices and customers, and use JavaScript to manipulate the data.
+
+```tsx
+const totalInvoices = allInvoices.length;
+const totalCustomers = allCustomers.length;
+```
+
+But with SQL, you can fetch only the data you need. It's a little longer than using Array.length, but it means less data needs to be transferred during the request. This is the SQL alternative:
+
+> /app/lib/data.ts
+```tsx
+const invoiceCountPromise = sql`SELECT COUNT(*) FROM invoices`;
+const customerCountPromise = sql`SELECT COUNT(*) FROM customers`;
+```
+
+The function you will need to import is called fetchCardData. You will need to destructure the values returned from the function.
+
+Hint:
+
+- Check the card components to see what data they need.
+- Check the data.ts file to see what the function returns.
+
+Great! You've now fetched all the data for the dashboard overview page. Your page should look like this:
+
+![Dashboard Data Fetching](https://nextjs.org/_next/image?url=%2Flearn%2Fdark%2Fcomplete-dashboard.png&w=1080&q=75&dpl=dpl_9qQQdh4D2Yn6grRGdiVN5fQKpqX7)
+
+
+However... there are two things you need to be aware of:
+
+1. The data requests are unintentionally blocking each other, creating a request waterfall.
+
+2. By default, Next.js prerenders routes to improve performance, this is called Static Rendering. So if your data changes, it won't be reflected in your dashboard.
+
+## Request Waterfalls
+
+What are request waterfalls?
+
+A "waterfall" refers to a sequence of network requests that depend on the completion of previous requests. In the case of data fetching, each request can only begin once the previous request has returned data.
+
+For example, we need to wait for fetchRevenue() to execute before fetchLatestInvoices() can start running, and so on.
+
+This pattern is not necessarily bad. There may be cases where you want waterfalls because you want a condition to be satisfied before you make the next request. For example, you might want to fetch a user's ID and profile information first. Once you have the ID, you might then proceed to fetch their list of friends. In this case, each request is contingent on the data returned from the previous request.
+
+However, this behavior can also be unintentional and impact performance.
+
+## Parallel data fetching
+
+A common way to avoid waterfalls is to initiate all data requests at the same time - in parallel.
+
+In JavaScript, you can use the Promise.all() or Promise.allSettled() functions to initiate all promises at the same time. For example, in data.ts, we're using Promise.all() in the fetchCardData() function.
+
+> Good to know:
+>
+> With Promise.allSettled(), you can also return an array of objects with status and value keys, so can check a promise's status is fulfilled or rejected before passing the value to your component. It's useful if you want to handle errors more gracefully.
+
+By using this pattern, you can:
+
+- Start executing all data fetches at the same time, which can lead to performance gains.
+- Use a native JavaScript pattern that can be applied to any library or framework.
+
+However, there is one disadvantage of using this JavaScript pattern: what happens if one data request is slower than all the others?
