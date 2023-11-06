@@ -142,3 +142,58 @@ export default function InvoiceStatus({ status }: { status: string }) {
     // ...
 )}
 ```
+
+## Optimizing Fonts and Images
+
+In the previous chapter, you learned how to style your Next.js application. Let's continue working on your home page by adding a custom font and a hero image.
+
+In this chapter...
+
+Here are the topics we’ll cover
+
+- ✏️ How to add custom fonts with next/font.
+
+- 🛣️ How to add images with next/image.
+
+- ✅ How fonts and images are optimized in Next.js.
+
+
+### Why optimize fonts?
+
+Fonts play a significant role in the design of a website, but using custom fonts in your project can affect performance if the font files need to be fetched and loaded.
+
+Cumulative Layout Shift is a metric used by Google to evaluate the performance and user experience of a website. With fonts, layout shift happens when the browser initially renders text in a fallback or system font and then swaps it out for a custom font once it has loaded. This swap can cause the text size, spacing, or layout to change, shifting elements around it.
+
+![Cumulative Layout Shift](https://nextjs.org/_next/image?url=%2Flearn%2Fdark%2Ffont-layout-shift.png&w=1920&q=75&dpl=dpl_9EKEbD7jAviauyTffgoEyAkQSGtP)
+
+Next.js automatically optimizes fonts in the application when you use the next/font module. It does so by downloading font files at build time and hosting them with your other static assets. This means when a user visits your application, there are no additional network requests for fonts which would impact performance.
+
+### Adding a primary font
+
+In your /app/ui folder, create a new file called fonts.ts. You'll use this file to keep the fonts that will be used throughout your application.
+
+Import the Inter font from the next/font/google module - this will be your primary font.
+Then, specify what subset you'd like to load. In this case, 'latin':
+
+```tsx
+import { Inter } from 'next/font/google';
+
+export const inter = Inter({ subsets: ['latin'] });
+```
+
+Finally, add the font to the <body> element in /app/layout.tsx
+
+By adding Inter to the <body> element, the font will be applied throughout your application. Here, you're also adding the Tailwind antialiased class which smooths out the font. It's not necessary to use this class, but it adds a nice touch to your fonts.
+
+```css
+.antialiased {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+```
+
+```tsx
+<body className={`${inter.className} antialiased`}>{children}</body>
+```
+
+> You can also add fonts to specific elements of your application.
