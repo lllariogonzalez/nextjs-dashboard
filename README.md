@@ -400,3 +400,77 @@ Splitting code by routes means that pages become isolated. If a certain page thr
 
 Furthermore, in production, whenever \<Link\> components appear in the browser's viewport, Next.js automatically prefetches the code for the linked route in the background. By the time the user clicks the link, the code for the destination page will already be loaded in the background, and the page transition will be near-instant!
 
+---
+
+## Setting Up Your Database
+
+Before you can continue working on your dashboard, you'll need some data. In this chapter, you'll be setting up a PostgreSQL database using @vercel/postgres. If you're already familiar with PostgreSQL and would prefer to use your own provider, you can skip this chapter and set it up on your own. Otherwise, let's continue!
+
+In this chapter...
+
+Here are the topics we’ll cover
+
+- Create and link your project to a Postgres database.
+
+- Seed the database with initial data.
+
+### Create a Postgres database
+
+Next, to set up a database, click the Storage tab from your Vercel dashboard. Select Connect Store → Create New → Postgres → Continue.
+
+![Vercel Postgres](https://nextjs.org/_next/image?url=%2Flearn%2Fdark%2Fcreate-database.png&w=1080&q=75&dpl=dpl_9qQQdh4D2Yn6grRGdiVN5fQKpqX7)
+
+Once connected, copy the contents from the .env.local tab on the database page.
+
+![env.local](https://nextjs.org/_next/image?url=%2Flearn%2Fdark%2Fdatabase-dashboard.png&w=1080&q=75&dpl=dpl_9qQQdh4D2Yn6grRGdiVN5fQKpqX7)
+
+Navigate to your code editor and rename the .env.example file to .env. Paste in the copied contents from Vercel.
+
+Important: Go to your .gitignore file and make sure .env are in the ignored files to prevent your database secrets from being exposed on GitHub.
+
+Finally, run:
+```bash 
+npm i @vercel/postgres
+```
+in your terminal to install the Vercel Postgres SDK.
+
+### Seed your database
+
+Now that your database has been created, let's seed it with some initial data. This will allow you to have some data to work with as you build the dashboard.
+
+In the ```/scripts``` folder of your project, there's a file called seed.js. This script contains the instructions for creating and seeding the invoices, customers, user, revenue tables.
+
+```json
+"scripts": {
+  "build": "next build",
+  "dev": "next dev",
+  "start": "next start",
+  "seed": "node -r dotenv/config ./scripts/seed.js"
+},
+```
+
+-r : require
+
+This is the command that will execute the seed.js. Before we can run the command, we must first npm i bcrypt, which is used to hash user passwords.
+
+Now, run npm run seed. You should see some console.log messages in your terminal to let you know the script is running.
+
+> Troubleshooting:
+>
+> If you run into any issues while seeding your database and want to run the script again, you can drop any existing tables by running DROP TABLE tablename in your database query interface. See the executing queries section below for more details.
+>
+> This command will delete the tables and all their data. But be careful, it's ok to do this with your example app since you're working with placeholder data, but you shouldn't run this command in a production app.
+>
+> If you continue to experience issues while seeding your Verce Postgres database, please open a discussion on GitHub.
+
+### Exploring your database
+
+Let's see what your database looks like. Go back to Vercel, and click Data in the sidenav.
+
+In this section, you'll find the four new tables: users, customers, invoices, revenue.
+
+![Data postgres Vercel](https://nextjs.org/_next/image?url=%2Flearn%2Fdark%2Fdatabase-tables.png&w=1080&q=75&dpl=dpl_9qQQdh4D2Yn6grRGdiVN5fQKpqX7)
+
+### Executing queries
+
+You can switch to the "query" tab to interact with your database. This section supports standard SQL commands. For instance, inputting DROP TABLE customers will delete "customers" table along with all its data - so be careful!
