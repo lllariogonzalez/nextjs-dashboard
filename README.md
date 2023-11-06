@@ -197,3 +197,81 @@ By adding Inter to the <body> element, the font will be applied throughout your 
 ```
 
 > You can also add fonts to specific elements of your application.
+
+---
+
+### Why optimize images?
+
+Next.js can serve static assets, like images, under the top-level /public folder. Files inside /public can be referenced in your application.
+
+If you look inside the folder, you'll see there's are two images: hero-desktop.png and hero-mobile.png. These two images are completely different, and they'll be shown depending on the user's device is a desktop or mobile.
+
+With regular HTML, you would add an image as follows:
+
+```tsx
+    <img src="/hero.png" alt="Screenshots of the dashboard project showing desktop and mobile versions"/>
+```
+
+However, this means you have to manually:
+
+- Ensure your image is responsive on different screen sizes.
+- Specify image sizes for different devices.
+- Prevent layout shift as the images load.
+- Lazy load images that are outside the user's viewport.
+
+Instead of manually handling these optimizations, you can use the ```next/image``` component to automatically optimize your images.
+
+### The \<Image\> component
+
+The \<Image\> Component is an extension of the HTML \<img\> tag, and comes with automatic image optimization, such as:
+
+- Preventing layout shift automatically when images are loading.
+- Resizing images to avoid shipping large images to devices with a smaller viewport.
+- Lazy loading images by default (images load as they enter the viewport).
+- Serving images in modern formats, like WebP and AVIF, when the browser supports it.
+
+### Adding the desktop hero image
+
+Let's swap the \<img\> tag for an \<Image\> component.
+
+In your /app/page.tsx file, import the component from next/image. Then, add the image under the comment:
+
+```tsx
+    <Image
+        src="/hero-desktop.png"
+        width={1000}
+        height={760}
+        className="hidden md:block"
+        alt="Screenshots of the dashboard project showing desktop and mobile versions"
+    />
+```
+
+Here, you're setting the width to 1000 and height to 760 pixels. It's good practice to set the width and height of your images to avoid layout shift, these should be an aspect ratio identical to the source image.
+
+### Adding the mobile hero image
+
+Now it's your turn again! Under the image you've just added, add another <Image> component for the mobile hero.
+
+- The image should have a width of 560 and height of 620 pixels.
+- It should be shown on mobile screens, and hidden on desktop.
+- You can use Dev Tools to check if the desktop and mobile images are swapped correctly.
+
+```tsx
+    <Image
+        src="/hero-mobile.png"
+        width={560}
+        height={620}
+        className="block md:hidden"
+        alt="Screenshot of the dashboard project showing mobile version"
+    />
+```
+
+### Recommended reading
+
+There's a lot more to learn about these topics, including optimizing remote images and using local font files. If you'd like to dive deeper into fonts and images, see:
+
+- [Image Optimization Docs](https://nextjs.org/docs/app/building-your-application/optimizing/images)
+- [Font Optimization Docs](https://nextjs.org/docs/app/building-your-application/optimizing/fonts)
+- [Improving Web Performance with Images (MDN)](https://developer.mozilla.org/en-US/docs/Learn/Performance/Multimedia)
+- [Web Fonts (MDN)](https://developer.mozilla.org/en-US/docs/Learn/CSS/Styling_text/Web_fonts)
+
