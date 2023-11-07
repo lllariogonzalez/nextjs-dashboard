@@ -1108,3 +1108,30 @@ If you navigate to the \<Table\> Component, you'll see that the two props, query
 >\<Table\> is a Server Component that fetches its own data, so you can pass the searchParams prop from the page to the component.
 >
 >As a general rule, if you want to read the params from the client, use the useSearchParams() hook as this avoids having to go back to the server.
+
+
+### Best practice: Debouncing
+
+Congratulations! You've implemented search with Next.js! But there's something you can do to optimize it.
+
+You're updating the URL on every keystroke, and therefore querying your database on every keystroke! This isn't a problem as our application is small, but imagine if your application had thousands of users, each sending a new request to your database on each keystroke.
+
+Debouncing is a programming practice that limits the rate at which a function can fire. In our case, you only want to query the database when the user has stopped typing.
+
+How Debouncing Works:
+
+1. Trigger Event: When an event that should be debounced (like a keystroke in the search box) occurs, a timer starts.
+2. Wait: If a new event occurs before the timer expires, the timer is reset.
+3. Execution: If the timer reaches the end of its countdown, the debounced function is executed.
+
+You can implement debouncing in a few ways, including manually creating your own debounce function. To keep things simple, we'll use a library called use-debounce.
+
+```bash
+npm i use-debounce
+```
+
+In your \<Search\> Component, import a function called useDebouncedCallback
+This function will wrap the contents of handleSearch, and only run the code after a specific time once the user has stopped typing (300ms).
+
+By debouncing, you can reduce the number of requests sent to your database, thus saving resources. 🖥️
+
