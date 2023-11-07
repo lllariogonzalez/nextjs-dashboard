@@ -1512,3 +1512,29 @@ Similarly to the createInvoice action, here you are:
 4. Calling revalidatePath to clear the client cache and make a new server request.
 5. Calling redirect to redirect the user to the invoice's page.
 
+## Deleting an invoice
+
+To delete an invoice using a Server Action, wrap the delete button in a <form> element and pass the id to the Server Action using bind:
+
+
+```ts
+import { deleteInvoice } from '@/app/lib/actions';
+// ...
+  const deleteInvoiceWithId = deleteInvoice.bind(null, id);
+```
+
+Inside your actions.ts file, create a new action called deleteInvoice.
+
+```ts
+export async function deleteInvoice(id: string) {
+  await sql`DELETE FROM invoices WHERE id = ${id}`;
+  revalidatePath('/dashboard/invoices');
+}
+```
+
+Since this action is being called in the /dashboard/invoices path, you don't need to call redirect. Calling revalidatePath will trigger a new server request and re-render the table.
+
+**Further reading**
+In this chapter, you learned how to use Server Actions to mutate data. You also learned how to use the revalidatePath API to revalidate the Next.js cache and redirect to redirect the user to a new page.
+
+You can also read more about security with Server Actions.
