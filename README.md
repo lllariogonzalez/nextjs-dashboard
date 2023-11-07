@@ -902,3 +902,62 @@ Where you place your suspense boundaries will vary depending on your application
 
 Don't be afraid to experiment with Suspense and see what works best, it's a powerful API that can help you create more delightful user experiences.
 
+---
+
+## Partial Prerendering (Optional)
+
+Partial Prerendering is an experimental feature introduced in Next.js 14. The content of this page may be updated as the feature progresses in stability. You may want to skip this chapter if you prefer to not use experimental features. This chapter is not required to complete the course.
+
+In this chapter...
+
+Here are the topics we’ll cover
+
+- What Partial Prerendering is.
+
+- How Partial Prerendering works.
+
+### Combining Static and Dynamic Content
+
+Currently, if you call a dynamic function inside your route (e.g. noStore(), cookies(), etc), your whole route becomes dynamic.
+
+This aligns with how most web apps are built today, you either choose between static and dynamic rendering for your entire application or for specific routes.
+
+However, most routes are not fully static or dynamic. You may have a route that has both static and dynamic content. For example, let's say you have a social media feed, the posts would be static, but the likes for the post would be dynamic. Or an ecommerce site, where the product details are static, but the user's cart is dynamic.
+
+Going back to your dashboard page, what components would you consider static vs. dynamic?
+
+![Dashboard Combining Static and Dynamic Content](https://nextjs.org/_next/image?url=%2Flearn%2Fdark%2Fdashboard-static-dynamic-components.png&w=1920&q=75&dpl=dpl_7RpAeq75qgcdEqm8L4GS5sRJ7t3C)
+
+### What is Partial Prerendering?
+
+In Next.js 14, there is a preview of a new compiler optimization called Partial Prerendering. Partial Prerendering is an experimental feature that allows you to render a route with a static loading shell, while keeping some parts dynamic. In other words, you can isolate the dynamic parts of a route.
+
+![Example partial prerendering](https://nextjs.org/_next/image?url=%2Flearn%2Fdark%2Fthinking-in-ppr.png&w=1920&q=75&dpl=dpl_7RpAeq75qgcdEqm8L4GS5sRJ7t3C)
+
+When a user visits a route:
+
+- A static route shell is served, this makes the initial load fast.
+- The shell leaves holes where dynamic content will load in async.
+- The async holes is loaded in parallel, reducing the overall load time of the page.
+
+This is different from how your application behaves today, where entire routes are either fully static or dynamic.
+
+### How does Partial Prerendering work?
+
+Partial Prerendering leverages React's Concurrent APIs and uses Suspense to defer rendering parts of your application until some condition is met (e.g. data is loaded).
+
+The fallback is embedded into the initial static file along with other static content. At build time (or during revalidation), the static parts of the route are prerendered, and the rest is postponed until the user requests the route.
+
+The great thing about Partial Prerendering is that you don't need to change your code to use it. As long as you're using Suspense to wrap the dynamic parts of your route, Next.js will know which parts of your route are static and which are dynamic.
+
+## Summary
+
+To recap, you've done a few things to optimize data fetching in your application, you've:
+
+1. Created a database in the same region as your application code to reduce latency between your server and database.
+2. Fetched data on the server with React Server Components. This allows you to keep expensive data fetches and logic on the server, reduces the client-side JavaScript bundle, and prevents your database secrets from being exposed to the client.
+3. Used SQL to only fetch the data you needed, reducing the amount of data transferred for each request and the amount of JavaScript needed to transform the data in-memory.
+4. Parallelize data fetching with JavaScript - where it made sense to do so.
+5. Implemented Streaming to prevent slow data requests from blocking your whole page, and to allow the user to start interacting with the UI without waiting for everything to load.
+6. Move data fetching down to the components that need it, thus isolating which parts of your routes should be dynamic in preparation for Partial Prerendering.
+
