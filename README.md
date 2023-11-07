@@ -1335,7 +1335,8 @@ export type Invoice = {
 
 So far, you only have the customer_id, amount, and status from the form.
 
-Type validation and coercion
+### Type validation and coercion
+
 It's important to validate that the data from your form aligns with the expected types in your database. For instance, if you add a console.log inside your action...
 
 You'll notice that amount is of type string and not number. This is because input elements with type="number" actually return a string, not a number!
@@ -1417,3 +1418,97 @@ Congratulations! You've just implemented your first Server Action. Test it out b
 
 1. You should be redirected to the /dashboard/invoices route on submission.
 2. You should see the new invoice at the top of the table.
+
+### Updating an invoice
+
+The updating invoice form is similar to the create an invoice form, except you'll need to pass the invoice id to update the record in your database. Let's see how you can get and pass the invoice id.
+
+These are the steps you'll take to update an invoice:
+
+1. Create a new dynamic route segment with the invoice id.
+2. Read the invoice id from the page params.
+3. Fetch the specific invoice from your database.
+4. Pre-populate the form with the invoice data.
+5. Update the invoice data in your database.
+>
+1. Create a Dynamic Route Segment with the invoice id
+Next.js allows you to create Dynamic Route Segments when you don't know the exact segment name and want to create routes based on data. This could be blog post titles, product pages, etc. You can create dynamic route segments by wrapping a folder's name in square brackets. For example, [id], [post] or [slug].
+
+In your /invoices folder, create a new dynamic route called [id], then a new route called edit with a page.tsx file.
+
+In your \<Table\> component, notice there's a \<UpdateInvoice /\> button that receives the invoice's id from the table records.
+
+Navigate to your \<UpdateInvoice /\> component, and update the href of the Link to accept the id prop. You can use template literals to link to a dynamic route segment.
+
+2. Read the invoice id from page params
+
+Notice how it's similar to your /create invoice page, except it imports a different form (from the edit-form.tsx file). This form should be pre-populated with a defaultValue for the customer's name, invoice amount, and status. To pre-populate the form fields, you need to fetch the specific invoice using id.
+
+In addition to searchParams, page components also accept a prop called params which you can use to access the id. Update your \<Page\> component to receive the prop.
+
+3. Fetch the specific invoice
+Then:
+
+- Import a new function called fetchInvoiceById and pass the id as an argument
+- Import fetchCustomers to fetch the customer names for the dropdown.
+
+You can use Promise.all to fetch both the invoice and customers in parallel.
+
+After navigation, you should see a form that is pre-populated with the invoice details:
+
+![Update Invoice](https://nextjs.org/_next/image?url=%2Flearn%2Fdark%2Fedit-invoice-page.png&w=1080&q=75&dpl=dpl_FQk1vqJFzbvQf7ciyg5D7QiENdN4)
+
+The URL should also be updated with an id as follows: http://localhost:3000/dashboard/invoice/uuid/edit
+
+>**UUIDs vs. Auto-incrementing Keys**
+>
+>We use UUIDs instead of incrementing keys (e.g., 1, 2, 3, etc.). This makes the URL longer; however, UUIDs eliminate the risk of ID collision, are globally unique, and reduce the risk of enumeration attacks - making them ideal for large databases.
+>
+>However, if you prefer cleaner URLs, you might prefer to use auto-incrementing keys.
+
+4. Pass the id to the Server Action
+
+Lastly, you want to pass the id to the Server Action so you can update the right record in your database. 
+You can pass id to the Server Action using JS bind. This will ensure that any values passed to the Server Action are encoded.
+
+> **Note:** Using a hidden input field in your form also works (e.g. \<input type="hidden" name="id" value={invoice.id} /\>). However, the values will appear as full text in the HTML source, which is not ideal for sensitive data like IDs.
+
+5. Update the invoice data in your database.
+
+Then, in your actions.ts file, create a new action, updateInvoice
+
+```ts
+// Use Zod to update the expected types
+const UpdateInvoice = InvoiceSchema.omit({ date: true });
+ 
+// ...
+ 
+export async function updateInvoice(id: string, formData: FormData) {
+  const { customerId, amount, status } = UpdateInvoice.parse({
+    customerId: formData.get('customerId'),
+    amount: formData.get('amount'),
+    status: formData.get('status'),
+  });
+ 
+  const amountInCents = amount * 100;
+ 
+  await sql`
+    UPDATE invoices
+    SET customer_id = ${customerId}, amount = ${amountInCents}, status = ${status}
+    WHERE id = ${id}
+  `;
+ 
+  revalidatePath('/dashboard/invoices');
+  redirect('/dashboard/invoices');
+}
+```
+
+Similarly to the createInvoice action, here you are:
+
+1. Extracting the data from formData.
+2. Validating the types with Zod.
+3. Converting the amount to cents.
+3. Passing the variables to your SQL query.
+4. Calling revalidatePath to clear the client cache and make a new server request.
+5. Calling redirect to redirect the user to the invoice's page.
+
