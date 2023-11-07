@@ -1538,3 +1538,69 @@ Since this action is being called in the /dashboard/invoices path, you don't nee
 In this chapter, you learned how to use Server Actions to mutate data. You also learned how to use the revalidatePath API to revalidate the Next.js cache and redirect to redirect the user to a new page.
 
 You can also read more about security with Server Actions.
+
+---
+
+## Handling Errors
+
+Let's explore best practices for mutating data with forms, including error handling and accessibility.
+
+In the previous chapter, you learned how to mutate data using Server Actions. Let's see how you can handle errors gracefully using JavaScript's try/catch statements and Next.js APIs.
+
+In this chapter...
+
+Here are the topics we’ll cover
+
+- How to use the special error.tsx file to catch errors in your route segments, and show a fallback UI to the user.
+
+- How to use the notFound function and not-found file to handle 404 errors (for resources that don’t exist).
+
+
+### Adding try/catch to Server Actions
+
+First, let's add JavaScript's try/catch statements to your Server Actions to allow you to handle errors gracefully.
+
+Note how redirect is being called outside of the try/catch block. This is because redirect works by throwing an error, which would be caught by the catch block. To avoid this, you can call redirect after try/catch. redirect would only be reachable if try is successful.
+
+```ts
+export async function deleteInvoice(id: string) {
+  try {
+    await sql`DELETE FROM invoices WHERE id = ${id}`;
+    revalidatePath('/dashboard/invoices');
+    return { message: 'Deleted Invoice.' };
+  } catch (error) {
+    return { message: 'Database Error: Failed to Delete Invoice.' };
+  }
+}
+```
+
+Now, let's check what happens when an error is thrown in your Server Action. You can do this by throwing an error earlier. For example, in the deleteInvoice action, throw an error at the top of the function:
+
+```ts
+export async function deleteInvoice(id: string, formData: FormData) {
+  throw new Error('Failed to Delete Invoice');
+  //...
+```
+
+When you try to delete an invoice, you should see an error on localhost.
+
+Seeing these errors are helpful while developing as you can catch any potential problems early. However, you also want to show errors to the user to avoid an abrupt failure and allow your application to continue running.
+
+This is where Next.js error.tsx file comes in.
+
+### Handling all errors with error.tsx
+
+The error.tsx file can be used to define a UI boundary for a route segment. It serves as a catch-all for unexpected errors and allows you to display a fallback UI to your users.
+
+Inside your /dashboard/invoices folder, create a new file called error.tsx
+
+There are a few things you'll notice about the code above:
+
+- "use client" - error.tsx needs to be a Client Component.
+- It accepts two props:
+  - error: This object is an instance of JavaScript's native Error object.
+  - reset: This is a function to reset the error boundary. When executed, the function will try to re-render the route segment.
+
+When you try to delete an invoice again, you should see the following UI:
+
+![Error handling delete invoice](https://nextjs.org/_next/image?url=%2Flearn%2Fdark%2Ferror-page.png&w=1080&q=75&dpl=dpl_Dr17aKMkaNBEHortDHFuuK6oJKA5)
