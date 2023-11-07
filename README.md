@@ -1135,3 +1135,37 @@ This function will wrap the contents of handleSearch, and only run the code afte
 
 By debouncing, you can reduce the number of requests sent to your database, thus saving resources. 🖥️
 
+## Adding pagination
+
+After introducing the search feature, you'll notice the table displays only 6 invoices at a time. This is because the fetchFilteredInvoices() function in data.ts returns a maximum of 6 invoices per page.
+
+Adding pagination allows users to navigate through the different pages to view all the invoices. Let's see how you can implement pagination using URL params, just like you did with search.
+
+Navigate to the <Pagination/> component and you'll notice that it's a Client Component. You don't want to fetch data on the client as this would expose your database secrets (remember, you're not using an API layer). Instead, you can fetch the data on the server, and pass it to the component as a prop.
+
+In /dashboard/invoices/page.tsx, import a new function called fetchInvoicesPages and pass the query from searchParams as an argument.
+
+fetchInvoicesPages returns the total number of pages based on the search query. For example, if there are 12 invoices that match the search query, and each page displays 6 invoices, then the total number of pages would be 2.
+
+Next, pass the totalPages prop to the \<Pagination/\> component.
+Import the usePathname and useSearchParams hooks. We will use this to get the current page and set the new page.
+
+Here's a breakdown of what's happening:
+
+- createPageURL creates an instance of the current search parameters.
+- Then, it updates the "page" parameter to the provided page number.
+- Finally, it constructs the full URL using the pathname and updated search parameters.
+
+Finally, when the user types a new search query, you want to reset the page number to 1. You can do this by updating the handleSearch function in your \<Search\> component.
+
+### Summary
+
+Congratulations! You've just implemented search and pagination using URL Params and Next.js APIs.
+
+To summarize, in this chapter:
+
+- You've handled search and pagination with URL search parameters instead of client state.
+- You've fetched data on the server.
+- You're using the useRouter router hook for smoother, client-side transitions.
+
+These patterns are different from what you may be used to when working with client-side React, but hopefully, you now better understand the benefits of using URL search params and lifting this state to the server.
