@@ -1141,7 +1141,7 @@ After introducing the search feature, you'll notice the table displays only 6 in
 
 Adding pagination allows users to navigate through the different pages to view all the invoices. Let's see how you can implement pagination using URL params, just like you did with search.
 
-Navigate to the <Pagination/> component and you'll notice that it's a Client Component. You don't want to fetch data on the client as this would expose your database secrets (remember, you're not using an API layer). Instead, you can fetch the data on the server, and pass it to the component as a prop.
+Navigate to the \<Pagination/\> component and you'll notice that it's a Client Component. You don't want to fetch data on the client as this would expose your database secrets (remember, you're not using an API layer). Instead, you can fetch the data on the server, and pass it to the component as a prop.
 
 In /dashboard/invoices/page.tsx, import a new function called fetchInvoicesPages and pass the query from searchParams as an argument.
 
@@ -1169,3 +1169,251 @@ To summarize, in this chapter:
 - You're using the useRouter router hook for smoother, client-side transitions.
 
 These patterns are different from what you may be used to when working with client-side React, but hopefully, you now better understand the benefits of using URL search params and lifting this state to the server.
+
+---
+
+## Mutating Data
+
+Learn how to mutate data with Server Actions.
+
+In the previous chapter, you implemented search and pagination using URL Search Params and Next.js APIs. Let's continue working on the Invoices page by adding the ability to create, update, and delete invoices!
+
+In this chapter...
+
+Here are the topics we’ll cover
+
+- What React Server Actions are and how to use them to mutate data.
+
+- How to work with forms and Server Components.
+
+- Best practices for working with the native formData object, including type validation.
+
+- How to revalidate the client cache using the revalidatePath API.
+
+- How to create dynamic route segments with specific IDs.
+
+- How to use the React’s useFormStatus hook for optimistic updates.
+
+### What are Server Actions?
+
+React Server Actions allow you to run asynchronous code directly on the server. They eliminate the need to create API endpoints to mutate your data. Instead, you write asynchronous functions that execute on the server and can be invoked from your Client or Server Components.
+
+Security is a top priority for web applications, as they can be vulnerable to various threats. This is where Server Actions come in. They offer an effective security solution, protecting against different types of attacks, securing your data, and ensuring authorized access. Server Actions achieve this through techniques like POST requests, encrypted closures, strict input checks, error message hashing, and host restrictions, all working together to significantly enhance your app's safety.
+
+### Using forms with Server Actions
+
+In React, you can use the action attribute in the \<form\> element to invoke actions. The action will automatically receive the native formData object, containing the captured data.
+
+For example:
+
+```tsx
+// Server Component
+export default function Page() {
+  // Action
+  async function create(formData: FormData) {
+    'use server';
+ 
+    // Logic to mutate data...
+  }
+ 
+  // Invoke the action using the "action" attribute
+  return <form action={create}>...</form>;
+}
+```
+
+An advantage of invoking a Server Action within a Server Component is progressive enhancement - forms work even if JavaScript is disabled on the client.
+
+### Next.js with Server Actions
+
+Server Actions are also deeply integrated with Next.js caching. When a form is submitted through a Server Action, not only can you use the action to mutate data, but you can also revalidate the associated cache using APIs like **revalidatePath** and **revalidateTag.**
+
+Let's see how it all works together!
+
+Creating an invoice
+Here are the steps you'll take to create a new invoice:
+
+1. Create a form to capture the user's input.
+2. Create a Server Action and invoke it from the form.
+3. Inside your Server Action, extract the data from the formData object.
+4. Validate and prepare the data to be inserted into your database.
+5. Insert the data and handle any errors.
+6. Revalidate the cache and redirect the user back to invoices page.
+
+1. Create a new route and form
+
+To start, inside the /invoices folder, add a new route segment called /create with a page.tsx file:
+
+```bash
+└── invoices
+    └── create
+        └── page.tsx
+```
+
+Your page is a Server Component that fetches customers and passes it to the \<Form\> component.
+
+Navigate to the \<Form\> component, and you'll see that the form:
+
+- Has two \<select\> (dropdown) elements: customers and status.
+- Has one \<input\> element for the amount with type="number".
+- Has one button with type="submit".
+
+![Form Invoices create](https://nextjs.org/_next/image?url=%2Flearn%2Fdark%2Fcreate-invoice-page.png&w=1080&q=75&dpl=dpl_FQk1vqJFzbvQf7ciyg5D7QiENdN4)
+
+2. Create a Server Action
+
+Great, now let's create a Server Action that is going to be called when the form is submitted.
+
+Navigate to your lib directory and create a new file named actions.ts. At the top of this file, add the React use server directive.
+
+By adding the 'use server', you mark all the exported functions within the file as server functions. These server functions can then be imported into Client and Server components, making them extremely versatile.
+
+You can also write Server Actions directly inside Server Components by adding "use server" inside the action. But for this course, we'll keep them all organized in a separate file.
+
+In your actions.ts file, create a new async function that accepts formData:
+
+```ts
+'use server';
+ 
+export async function createInvoice(formData: FormData) {}
+```
+
+Then, in your \<Form\> component, import the createInvoice from your actions.ts file. Add a action attribute to the \<form\> element, and call the createInvoice action.
+
+>Good to know: In HTML, you'd pass a URL to the action attribute. This URL would be the destination where your form data should be submitted (usually an API endpoint).
+>
+>However, in React, the action attribute is considered a special prop - meaning React builds on top of it to allow actions to be invoked. Rather than calling an API explicitly, you can pass a function to action.
+>
+>Behind the scenes, Server Actions create a POST API endpoint. This is why you don't need to create API endpoints manually when using Server Actions.
+
+3. Extract the data from formData
+
+Back in your actions.ts file, you'll need to extract the values of formData, there are a couple of methods you can use. For this example, let's use the .get(name) method.
+
+```ts
+'use server';
+ 
+export async function createInvoice(formData: FormData) {
+  const rawFormData = {
+    customerId: formData.get('customerId'),
+    amount: formData.get('amount'),
+    status: formData.get('status'),
+  };
+  // Test it out:
+  console.log(rawFormData);
+}
+```
+
+>Tip: If you're working with forms that have many fields, you may want to consider using the entries() method with JavaScript's Object.fromEntries(). For example:
+>
+>const rawFormData = Object.fromEntries(formData.entries())
+
+To check everything is connected correctly, go ahead and try out the form. After submitting, you should see the data you just entered into the form logged in your terminal.
+
+Now that your data is in the shape of an object, it'll be much easier to work with.
+
+```bash
+{
+  customerId: 'cc27c14a-0acf-4f4a-a6c9-d45682c144b9',
+  amount: '1000',
+  status: 'paid'
+}
+```
+
+4. Validate and prepare the data
+
+Before sending the form data to your database, you want to ensure it's in the correct format and with the correct types. If you remember from earlier in the course, your invoices table expects data in the following format:
+
+```ts
+export type Invoice = {
+  id: string; // Will be created on the database
+  customer_id: string;
+  amount: number; // Stored in cents
+  status: 'pending' | 'paid';
+  date: string;
+};
+```
+
+So far, you only have the customer_id, amount, and status from the form.
+
+Type validation and coercion
+It's important to validate that the data from your form aligns with the expected types in your database. For instance, if you add a console.log inside your action...
+
+You'll notice that amount is of type string and not number. This is because input elements with type="number" actually return a string, not a number!
+
+To handle type validation, you have a few options. While you can manually validate types, using a type validation library can save you time and effort. For your example, we'll use **Zod**, a TypeScript-first validation library that can simplify this task for you.
+
+In your actions.ts file, import Zod and define a schema that matches the shape of your form object. This schema will validate the formData before saving it to a database.
+
+```ts
+import { z } from 'zod';
+ 
+const InvoiceSchema = z.object({
+  id: z.string(),
+  customerId: z.string(),
+  amount: z.coerce.number(),
+  status: z.enum(['pending', 'paid']),
+  date: z.string(),
+});
+
+const CreateInvoice = InvoiceSchema.omit({ id: true, date: true });
+```
+
+The amount field is specifically set to coerce (change) from a string to a number while also validating its type.
+
+You can then pass your rawFormData to NewInvoice to validate the types:
+
+**Storing values in cents**
+
+It's usually good practice to store monetary values in cents in your database to eliminate JavaScript floating-point errors and ensure greater accuracy.
+
+Let's convert the amount into cents:
+
+`const amountInCents = amount * 100;`
+
+**Creating new dates**
+
+Finally, let's create a new date with the format "YYYY-MM-DD" for the invoice's creation date:
+
+`const date = new Date().toISOString().split('T')[0];`
+
+5. Inserting the data into your database
+
+Now that you have all the values you need for your database, you can create an SQL query to insert the new invoice into your database and pass in the variables:
+
+```ts
+import { sql } from '@vercel/postgres';
+// ...
+await sql`
+    INSERT INTO invoices (customer_id, amount, status, date)
+    VALUES (${customerId}, ${amountInCents}, ${status}, ${date})
+  `;
+```
+
+Right now, we're not handling any errors. We'll do it in the next chapter. For now, let's move on to the next step.
+
+6. Revalidate and redirect
+
+Next.js has a **Client-side Router Cache** that stores the route segments in the user's browser for a time. Along with prefetching, this cache ensures that users can quickly navigate between routes while reducing the number of requests made to the server.
+
+Since you're updating the data displayed in the invoices route, you want to clear this cache and trigger a new request to the server. You can do this with the **revalidatePath** function from Next.js:
+
+```ts
+import { revalidatePath } from 'next/cache';
+//...
+  revalidatePath('/dashboard/invoices');
+```
+
+Once the database has been updated, the /dashboard/invoices path will be revalidated, and fresh data will be fetched from the server.
+
+At this point, you also want to redirect the user back to the /dashboard/invoices page. You can do this with the redirect function from Next.js:
+
+```ts
+import { redirect } from 'next/navigation';
+// ...
+  redirect('/dashboard/invoices');
+```
+
+Congratulations! You've just implemented your first Server Action. Test it out by adding a new invoice, if everything is working correctly:
+
+1. You should be redirected to the /dashboard/invoices route on submission.
+2. You should see the new invoice at the top of the table.
