@@ -2055,3 +2055,14 @@ Now you need to connect the auth logic with your login form. In your actions.ts 
 If there's a 'CredentialSignin' error, you want to return it so that you can show an appropriate error message.
 
 Finally, in your login-form.tsx component, you can use React's useFormState to call the server action and handle form errors, and use useFormStatus to handle the pending state of the form.
+
+### Adding the logout functionality
+
+To add the logout functionality, call the signOut function from auth.ts in your \<SideNav\> component.
+
+**Try it out**
+
+Now, try it out. You should be able to log in and out of your application using the following credentials:
+
+- Email: user@nextmail.com
+- Password: 123456
