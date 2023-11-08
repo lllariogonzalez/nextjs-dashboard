@@ -1038,9 +1038,9 @@ Import useRouter and usePathname from 'next/navigation', and use the replace met
 
 Here's a breakdown of what's happening:
 
-${pathname} is the current path, in your case, "/dashboard/invoices".
-As the user types into the search bar, params.toString() translates this input into a URL-friendly format.
-The replace(${pathname}?${params.toString()}); command updates the URL with the user's search data. For example, /dashboard/invoices?query=lee if the user searches for "lee".
+`${pathname}` is the current path, in your case, `"/dashboard/invoices".`
+As the user types into the search bar, `params.toString()` translates this input into a URL-friendly format.
+The replace`(${pathname}?${params.toString()});` command updates the URL with the user's search data. For example, `/dashboard/invoices?query=lee` if the user searches for "lee".
 The URL is updated without reloading the page, thanks to Next.js's client-side navigation
 
 ```tsx
@@ -2066,3 +2066,4 @@ Now, try it out. You should be able to log in and out of your application using 
 
 - Email: user@nextmail.com
 - Password: 123456
+
