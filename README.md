@@ -2227,7 +2227,7 @@ But this is just the beginning—Next.js has many other features. It's designed 
 
 Here are some resources to continue exploring Next.js:
 
-[Next.js Documentation](https://nextjs.org/docs)
-[Next.js Templates](https://vercel.com/templates?framework=next.js)
-[Next.js Repository](https://github.com/vercel/next.js)
-[Vercel YouTube](https://www.youtube.com/@VercelHQ/videos)
+- [Next.js Documentation](https://nextjs.org/docs)
+- [Next.js Templates](https://vercel.com/templates?framework=next.js)
+- [Next.js Repository](https://github.com/vercel/next.js)
+- [Vercel YouTube](https://www.youtube.com/@VercelHQ/videos)

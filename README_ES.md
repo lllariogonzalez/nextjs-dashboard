@@ -3594,3 +3594,17 @@ Ahora que ha aprendido sobre los metadatos, practique agregando títulos a sus o
 
 La API de metadatos Next.JS es potente y flexible, lo que le brinda control total sobre los metadatos de su aplicación. Aquí, le hemos mostrado cómo agregar algunos metadatos básicos, pero puede agregar múltiples campos, incluidas palabras `keywords, robots, canonical `y más. Siéntase libre de explorar la documentación y agregar cualquier metadato adicional que desee a su aplicación.
 
+---
+
+## Próximos pasos
+
+¡Felicidades! Ha completado el curso de Next.JS donde aprendió sobre las características principales de Next.js y las mejores prácticas para construir aplicaciones web.
+
+Pero este es solo el comienzo: Next.js tiene muchas otras características. Está diseñado para ayudarlo a construir proyectos, su próxima idea o incluso aplicaciones a gran escala con su equipo.
+
+Aquí hay algunos recursos para continuar explorando Next.js:
+
+- [Next.js Documentation](https://nextjs.org/docs)
+- [Next.js Templates](https://vercel.com/templates?framework=next.js)
+- [Next.js Repository](https://github.com/vercel/next.js)
+- [Vercel YouTube](https://www.youtube.com/@VercelHQ/videos)
