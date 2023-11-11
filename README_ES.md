@@ -21,7 +21,7 @@ A continuación se ofrece una descripción general de las funciones que aprender
 - [**Enrutamiento:**](#crear-diseños-y-páginas) cómo crear diseños y páginas anidados utilizando el enrutamiento del sistema de archivos.
 - [**Obtención de datos:**](#configurando-su-base-de-datos) cómo configurar una base de datos en Vercel y mejores prácticas para la obtención y transmisión por secuencias.
 - [**Renderizado estatico y dinámico:**](#representación-estática-y-dinámica) qué es el renderizado estático y cómo puede mejorar el rendimiento de su aplicación y qué es el renderizado dinámico y como usarlo.
-- [**Streaming**] qué es el streaming y cuándo puedes utilizarlo con loading, Suspense y esqueletos de carga.
+- [**Streaming**](#streaming) qué es el streaming y cuándo puedes utilizarlo con loading, Suspense y esqueletos de carga.
 - [**Búsqueda y paginación:**] cómo implementar la búsqueda y paginación utilizando parámetros de búsqueda de URL.
 - [**Mutación de datos:**] cómo mutar datos usando React Server Actions y revalidar el caché de Next.js.
 - [**Manejo de errores:**] cómo manejar errores generales y 404 no encontrados.
@@ -1071,4 +1071,268 @@ Diagrama que muestra toda la página bloqueada para su procesamiento mientras se
 Lo que nos lleva a un desafío común que los desarrolladores deben resolver:
 
 Con el renderizado dinámico, su aplicación es tan rápida como su recuperación de datos más lenta.
+
+---
+
+## Streaming
+
+Aprenda cómo mejorar la experiencia de su usuario agregando streaming.
+
+En el capítulo anterior, dinamizó la página del panel; sin embargo, analizamos cómo las recuperaciones lentas de datos pueden afectar el rendimiento de su aplicación. Veamos cómo puede mejorar la experiencia del usuario cuando hay solicitudes de datos lentas.
+
+
+Estos son los temas que cubriremos
+
+- Qué es el streaming y cuándo puedes utilizarlo.
+
+- Cómo implementar streaming con `loading.tsx` y `Suspense`.
+
+- Qué son los esqueletos de carga.
+
+- Qué son los **grupos de rutas** y cuándo puedes utilizarlos.
+
+- Dónde colocar límites de suspenso en su aplicación.
+
+**¿Qué es el streaming?**
+
+La transmisión por secuencias es una técnica de transferencia de datos que le permite dividir una ruta en "fragmentos" más pequeños y transmitirlos progresivamente desde el servidor al cliente a medida que estén listos.
+
+![Diagrama de recuperación secuencial vs paralelo](https://nextjs.org/_next/image?url=%2Flearn%2Fdark%2Fserver-rendering-with-streaming.png&w=1920&q=75&dpl=dpl_8mqvTcfbhtdnPWFJCvFr8naAHAAq)
+
+Diagrama que muestra el tiempo con recuperación de datos secuencial y recuperación de datos en paralelo
+Al transmitir, puede evitar que las solicitudes de datos lentas bloqueen toda su página. Esto permite al usuario ver e interactuar con partes de la página sin esperar a que se carguen todos los datos antes de poder mostrarle cualquier interfaz de usuario.
+
+La obtención y representación de datos se inician en paralelo, por lo que el usuario puede ver la interfaz de usuario cuando esté lista. Esto es diferente del enfoque tradicional en cascada, donde la obtención y el procesamiento de datos se inician secuencialmente, bloqueando el procesamiento de la interfaz de usuario hasta que todos los datos estén listos.
+
+![Streaming de componentes en paralelo](https://nextjs.org/_next/image?url=%2Flearn%2Fdark%2Fserver-rendering-with-streaming-chart.png&w=1920&q=75&dpl=dpl_8mqvTcfbhtdnPWFJCvFr8naAHAAq)
+
+La transmisión funciona bien con el modelo de componentes de React, ya que cada componente puede considerarse un fragmento.
+
+**Hay dos formas de implementar la transmisión en Next.js:**
+
+1. ### A nivel de página, con el archivo `loading.tsx`.
+
+Transmitir una página completa con `loading.tsx`
+En la carpeta **/app/dashboard**, cree un nuevo archivo llamado `loading.tsx`:
+
+```tsx
+export default function Loading() {
+  return <div>Loading...</div>;
+}
+```
+
+Algunas cosas están sucediendo aquí:
+
+1. `loading.tsx` es un archivo especial Next.js creado sobre Suspense, que le permite crear una interfaz de usuario de carga para mostrarla como reemplazo mientras se carga el contenido de la página.
+
+2. Dado que `<Sidebar> `es estático, se muestra inmediatamente. El usuario puede interactuar con `<Sidebar> ` mientras se carga el contenido dinámico.
+
+3. El usuario no tiene que esperar a que la página termine de cargarse antes de navegar (esto se llama navegación interrumpible).
+
+**¡Felicidades! ¡Acabas de implementar Streaming con Next.js!**
+
+Pero podemos hacer más para mejorar la experiencia del usuario. Mostremos un esqueleto en lugar del texto Cargando….
+
+**Agregar esqueletos de carga**
+
+Un esqueleto de carga es una versión simplificada de la interfaz de usuario. Muchos sitios web los utilizan como marcador de posición (o respaldo) para indicar a los usuarios que el contenido se está cargando. Cualquier interfaz de usuario que incorpore en `loading.tsx` se incrustará como parte del archivo estático y se enviará primero. Luego, el resto del contenido dinámico se transmitirá desde el servidor al cliente.
+
+Dentro de su archivo `loading.tsx`, importe un nuevo componente llamado `<DashboardSkeleton>`:
+
+```tsx
+import DashboardSkeleton from '@/app/ui/skeletons';
+ 
+export default function Loading() {
+  return <DashboardSkeleton />;
+}
+```
+
+Luego, actualice http://localhost:3000/dashboard y ahora debería ver:
+
+![Panel cargando utilizando esqueletos de carga](https://nextjs.org/_next/image?url=%2Flearn%2Fdark%2Floading-page-with-skeleton.png&w=1080&q=75&dpl=dpl_8mqvTcfbhtdnPWFJCvFr8naAHAAq)
+
+**Arreglando el error del esqueleto de carga con grupos de rutas**
+
+En este momento, su esqueleto de carga se aplicará también a las páginas de invoices y customers.
+
+Dado que `loading.tsx` tiene un nivel superior a **/invoices/page.tsx** y **/customers/page.tsx** en el sistema de archivos, también se aplica a esas páginas.
+
+Podemos cambiar esto con **Grupos de Rutas**. Cree una nueva carpeta llamada /(overview) dentro de la carpeta del panel. Luego, mueva sus archivos `loading.tsx` y `page.tsx` dentro de la carpeta:
+
+![Ejemplo estructura de carpetas utilizando grupos](https://nextjs.org/_next/image?url=%2Flearn%2Fdark%2Froute-group.png&w=1920&q=75&dpl=dpl_8mqvTcfbhtdnPWFJCvFr8naAHAAq)
+
+Ahora, el archivo `loading.tsx` solo se aplicará a la página de descripción general de su panel.
+
+Los **grupos de rutas** le permiten organizar archivos en grupos lógicos sin afectar la estructura de la ruta URL. Cuando crea una nueva carpeta usando paréntesis (), el nombre no se incluirá en la ruta URL. Entonces /dashboard/(overview)/page.tsx se convierte en /dashboard.
+
+Aquí, está utilizando un grupo de rutas para garantizar que `loading.tsx` solo se aplique a la página de descripción general de su panel. Sin embargo, también puede utilizar **grupos de rutas** para separar su aplicación en secciones (por ejemplo, rutas (de marketing) y rutas (de panel)) o por equipos para aplicaciones más grandes.
+
+
+2. ### Para componentes específicos, con `<Suspense>`.
+
+Streaming de un componente
+
+Hasta ahora, estás transmitiendo una página completa. Pero, en cambio, puede ser más granular y transmitir componentes específicos usando **React Suspense**.
+
+**Suspense** le permite diferir la renderización de partes de su aplicación hasta que se cumpla alguna condición (por ejemplo, se cargan los datos). Puede envolver sus componentes dinámicos en **Suspense**. Luego, pásele un componente alternativo para mostrarlo mientras se carga el componente dinámico.
+
+Si recuerda la solicitud de datos lenta, `fetchRevenue()`, esta es la solicitud que está ralentizando toda la página. En lugar de bloquear su página, puede usar **Suspense** para transmitir solo este componente y mostrar inmediatamente el resto de la interfaz de usuario de la página.
+
+Para hacerlo, deberá mover la recuperación de datos al componente. Actualicemos el código para ver cómo se verá:
+
+Elimine todas las instancias de `fetchRevenue()` y sus datos de **/dashboard/(overview)/page.tsx**:
+
+Luego, importe `<Suspense>` desde React y envuélvalo alrededor de `<RevenueChart />`. Puede pasarle un componente alternativo llamado `<RevenueChartSkeleton>`.
+
+```tsx
+import { Card } from '@/app/ui/dashboard/cards';
+import RevenueChart from '@/app/ui/dashboard/revenue-chart';
+import LatestInvoices from '@/app/ui/dashboard/latest-invoices';
+import { lusitana } from '@/app/ui/fonts';
+import { fetchLatestInvoices, fetchCardData } from '@/app/lib/data';
+import { Suspense } from 'react';
+import { RevenueChartSkeleton } from '@/app/ui/skeletons';
+ 
+export default async function Page() {
+  const latestInvoices = await fetchLatestInvoices();
+  const {
+    numberOfInvoices,
+    numberOfCustomers,
+    totalPaidInvoices,
+    totalPendingInvoices,
+  } = await fetchCardData();
+ 
+  return (
+    <main>
+      <h1 className={`${lusitana.className} mb-4 text-xl md:text-2xl`}>
+        Dashboard
+      </h1>
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <Card title="Collected" value={totalPaidInvoices} type="collected" />
+        <Card title="Pending" value={totalPendingInvoices} type="pending" />
+        <Card title="Total Invoices" value={numberOfInvoices} type="invoices" />
+        <Card
+          title="Total Customers"
+          value={numberOfCustomers}
+          type="customers"
+        />
+      </div>
+      <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-4 lg:grid-cols-8">
+        <Suspense fallback={<RevenueChartSkeleton />}>
+          <RevenueChart />
+        </Suspense>
+        <LatestInvoices latestInvoices={latestInvoices} />
+      </div>
+    </main>
+  );
+}
+```
+
+Ahora actualice la página, debería ver la información del panel casi de inmediato, mientras se muestra un esqueleto alternativo para `<RevenueChart>`:
+
+![Panel con streaming de un componente](https://nextjs.org/_next/image?url=%2Flearn%2Fdark%2Floading-revenue-chart.png&w=1080&q=75&dpl=dpl_8mqvTcfbhtdnPWFJCvFr8naAHAAq)
+
+**Práctica: Streaming `<ÚltimasFacturas>`**
+
+¡Ahora es tu turno! Practique lo que acaba de aprender transmitiendo el componente `<LatestInvoices>`.
+
+Mueva fetchLatestInvoices() hacia abajo desde la página al componente `<LatestInvoices>`. Envuelva el componente en un límite `<Suspense>` con un respaldo llamado `<LatestInvoicesSkeleton>`.
+
+```tsx
+import { fetchCardData } from '@/app/lib/data';
+import { Suspense } from 'react';
+import {
+  RevenueChartSkeleton,
+  LatestInvoicesSkeleton,
+} from '@/app/ui/skeletons';
+//...
+
+ <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-4 lg:grid-cols-8">
+    <Suspense fallback={<RevenueChartSkeleton />}>
+        <RevenueChart />
+    </Suspense>
+    <Suspense fallback={<LatestInvoicesSkeleton />}>
+        <LatestInvoices />
+    </Suspense>
+</div>
+```
+
+> Recuerda eliminar las props de `<LatestInvoices>` component.
+
+**Componentes de agrupación**
+
+¡Excelente! Ya casi has llegado, ahora necesitas envolver los componentes `<Card>` en Suspense. Puede recuperar datos para cada tarjeta individual, pero esto podría provocar un efecto de estallido a medida que las tarjetas se cargan, lo que puede resultar visualmente discordante para el usuario.
+
+Entonces, ¿cómo abordarías este problema?
+
+Para crear un efecto más escalonado, puedes agrupar las tarjetas usando un componente contenedor. Esto significa que la `<Sidebar/>` estática se mostrará primero, seguida de las tarjetas, etc.
+
+En su archivo `page.tsx`:
+
+- Elimine los componentes de su `<Card>`.
+- Elimine la función `fetchCardData()`.
+- Importe un nuevo componente contenedor llamado `<CardWrapper />`.
+- Envuelva `<CardWrapper />`en Suspense.
+
+```tsx
+import CardWrapper from '@/app/ui/dashboard/cards';
+// ...
+import {
+  RevenueChartSkeleton,
+  LatestInvoicesSkeleton,
+  CardsSkeleton,
+} from '@/app/ui/skeletons';
+ 
+export default async function Page() {
+  return (
+    <main>
+      <h1 className={`${lusitana.className} mb-4 text-xl md:text-2xl`}>
+        Dashboard
+      </h1>
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <Suspense fallback={<CardsSkeleton />}>
+          <CardWrapper />
+        </Suspense>
+      </div>
+      // ...
+    </main>
+  );
+}
+```
+Luego, dentro de su componente `<CardWrapper/>`, importe la función `fetchCardData()`:
+
+```tsx
+// ...
+import { fetchCardData } from '@/app/lib/data';
+ 
+// ...
+ 
+export default async function CardWrapper() {
+  const {
+    numberOfInvoices,
+    numberOfCustomers,
+    totalPaidInvoices,
+    totalPendingInvoices,
+  } = await fetchCardData();
+ 
+  return (
+    <>
+      <Card title="Collected" value={totalPaidInvoices} type="collected" />
+      <Card title="Pending" value={totalPendingInvoices} type="pending" />
+      <Card title="Total Invoices" value={numberOfInvoices} type="invoices" />
+      <Card
+        title="Total Customers"
+        value={numberOfCustomers}
+        type="customers"
+      />
+    </>
+  );
+}
+```
+
+**Mirando hacia el futuro**
+
+Los componentes de servidor y streaming nos brindan nuevas formas de manejar los estados de carga y obtención de datos, en última instancia con el objetivo de mejorar la experiencia del usuario final.
+
+En el siguiente capítulo, aprenderá sobre la renderización previa parcial, una nueva optimización del compilador Next.js creada teniendo en cuenta el streaming en función de los límites de Suspense.
 
