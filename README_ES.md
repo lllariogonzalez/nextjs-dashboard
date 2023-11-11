@@ -25,7 +25,7 @@ A continuación se ofrece una descripción general de las funciones que aprender
 - [**Búsqueda y paginación:**](#agregar-búsqueda-y-paginación) cómo implementar la búsqueda y paginación utilizando parámetros de búsqueda de URL.
 - [**Mutación de datos:**](#mutación-de-datos) cómo mutar datos usando React Server Actions y revalidar el caché de Next.js.
 - [**Manejo de errores:**](#manejo-de-errores) cómo manejar errores generales y 404 no encontrados.
-- [**Validación y accesibilidad de formularios:**] cómo realizar la validación de formularios del lado del servidor y consejos para mejorar la accesibilidad.
+- [**Validación y accesibilidad de formularios:**](#mejora-de-la-accesibilidad) cómo realizar la validación de formularios del lado del servidor y consejos para mejorar la accesibilidad.
 - [**Autenticación:**] cómo agregar autenticación a su aplicación usando NextAuth.js y Middleware.
 - [**Metadatos:**] cómo agregar metadatos y preparar su aplicación para compartir en redes sociales.
 
@@ -2683,3 +2683,372 @@ Para obtener más información sobre el manejo de errores en Next.js, consulte l
 - [notFound() API Reference](https://nextjs.org/docs/app/api-reference/functions/not-found)
 - [not-found.js API Reference](https://nextjs.org/docs/app/api-reference/file-conventions/not-found)
 
+---
+
+## Mejora de la accesibilidad
+
+En el capítulo anterior, observamos cómo capturar errores (incluidos 404 errores) y mostrar una respuesta al usuario. Sin embargo, todavía necesitamos discutir otra pieza del rompecabezas: la validación de formulario. Veamos cómo implementar la validación del lado del servidor con acciones del servidor y cómo puede mostrar errores de formulario usando `useFormState` Hook, *¡al tiempo que tiene en cuenta la accesibilidad!*
+
+Estos son los temas que cubriremos
+
+- Cómo usar `eslint-plugin-jsx-a11y` con Next.js para implementar las mejores prácticas de accesibilidad.
+
+- Cómo implementar la validación de formulario del lado del servidor.
+
+- Cómo usar el hook React `useFormState` para manejar los errores de formulario y mostrarlos al usuario.
+
+### ¿Qué es la accesibilidad?
+
+La accesibilidad se refiere al diseño e implementación de aplicaciones web que todos pueden usar, incluidas aquellas con discapacidades. Es un vasto tema que cubre muchas áreas, como navegación de teclado, HTML semántico, imágenes, colores, videos, etc.
+
+Si bien no entraremos profundamente en la accesibilidad en este curso, discutiremos las funciones de accesibilidad disponibles en Next.js y algunas prácticas comunes para que sus aplicaciones sean más accesibles.
+
+> Si desea obtener más información sobre accesibilidad, recomendamos el curso de Accesibilidad de aprendizaje de [Web.dev](https://web.dev/learn/accessibility/).
+
+### Uso del complemento de accesibilidad Eslint en Next.js
+
+Por defecto, Next.js incluye el complemento `eslint-plugin-jsx-a11y` para ayudar a atrapar problemas de accesibilidad temprano. Por ejemplo, este complemento advierte si tiene imágenes sin texto `alt`, si usa los atributos de `aria-*` y `role` de manera incorrecta, y más.
+
+¡Veamos cómo funciona esto!
+
+Agregue un script en su archivo paquete.json:
+
+```json
+
+"scripts": {
+    "build": "next build",
+    "dev": "next dev",
+    "seed": "node -r dotenv/config ./scripts/seed.js",
+    "start": "next start",
+    "lint": "next lint"
+},
+
+```
+
+Luego ejecute por terminal: `npm run lint`, si no tiene errores debería observar por la terminal:
+
+```bash
+✔ No ESLint warnings or errors
+```
+
+> Hay un par de [reglas](https://github.com/jsx-eslint/eslint-plugin-jsx-a11y/tree/main/docs/rules) cuando se usa atributos ARIA, y si es nuevo en la accesibilidad, puede ser difícil saber si los está utilizando correctamente. Puede usar este complemento para ayudarlo en el camino. 
+
+### Mejora de la accesibilidad de formulario
+
+Hay tres cosas que ya estamos haciendo para mejorar la accesibilidad en nuestros formularios:
+
+- **HTML semántico:** usando elementos semánticos (`<input>`, `<option>`, etc.) en lugar de `<div>`. Esto permite que las tecnologías de asistencia (AT) se concentren en los elementos de entrada y proporcionen información contextual adecuada al usuario, lo que hace que el formulario sea más fácil de navegar y comprender.
+
+- **Etiquetado - Labelling:** incluyendo `<label>` y el atributo `htmlFor` asegura que cada campo de formulario tenga una etiqueta de texto descriptiva. Esto mejora el soporte al proporcionar un contexto y también mejora la usabilidad al permitir a los usuarios hacer clic en la etiqueta para centrarse en el campo de entrada correspondiente.
+
+- **Focus Outline:** los campos tienen adecuadamente el estilo para mostrar un esquema cuando están enfocados. Esto es crítico para la accesibilidad, ya que indica visualmente el elemento activo en la página, ayudando a los usuarios de lector de teclado y pantalla a comprender dónde están en el formulario. Puede verificar esto presionando `tab`.
+
+Estas prácticas sientan una buena base para hacer que sus formularios sean más accesibles para muchos usuarios. Sin embargo, no abordan la validación y los errores de formulario.
+
+### Validación de formulario
+
+Vaya a http://localhost:3000/dashboard/invoices/create, y envíe un formulario vacío. ¿que sucede?
+
+¡Recibes un error! Esto se debe a que está enviando valores de formulario vacíos a la acción de su servidor. Puede evitar esto validando su formulario en el cliente o en el servidor.
+
+1. **Validación del lado del cliente**
+
+Hay un par de formas en que puede validar los formularios en el cliente. El más simple sería confiar en la validación de formulario proporcionada por el navegador agregando el atributo requerido a los elementos `<input>` y `<select>` en sus formularios.
+
+Este enfoque generalmente está bien porque algunos ATS admiten la validación del navegador.
+
+Una alternativa a la validación del lado del cliente es la validación del lado del servidor.
+
+2. **Validación del lado del servidor**
+
+Al validar los formularios en el servidor, puede:
+
+- Asegurarse de que sus datos estén en el formato esperado antes de enviarlos a su base de datos.
+
+- Reducir el riesgo de que los usuarios maliciosos pasen por alto la validación del lado del cliente.
+
+- Tener una fuente de verdad para lo que se considera datos válidos.
+
+En su componente `create-form.tsx`, importe el gancho `useFormState` de React-Dom. Dado que `useFormState` es un hook, deberá convertir su formulario en un componente de cliente utilizando la directiva `"use client"`:
+
+```tsx
+'use client';
+ 
+// ...
+import { useFormState } from 'react-dom';
+```
+
+Dentro de su componente de formulario, el gancho `useFormState`:
+
+- Toma dos argumentos: `(action, inicialState)`.
+- Devuelve dos valores: `[state, dispatch]` el estado del formulario y una función de despacho (similar a `useReducer`)
+
+Pase su acción `createInvoice` como un argumento de `useFormState`, y dentro de su `<form action={}>` use el dispatch.
+
+El `initialState` puede ser cualquier cosa que define, en este caso, cree un objeto con dos claves vacías: `{ message: null, errors: {} }`
+
+```tsx
+// ...
+import { useFormState } from 'react-dom';
+ 
+export default function Form({ customers }: { customers: CustomerField[] }) {
+  const initialState = { message: null, errors: {} };
+  const [state, dispatch] = useFormState(createInvoice, initialState);
+ 
+  return <form action={dispatch}>...</form>;
+}
+```
+Esto puede parecer confuso inicialmente, pero tendrá más sentido una vez que actualice la acción del servidor. Hagamos eso ahora.
+
+En su archivo `action.ts`, puede usar Zod para validar los datos de formulario. Actualice su InvoiceSchema de la siguiente manera:
+
+```ts
+const InvoiceSchema = z.object({
+  id: z.string(),
+  customerId: z.string({
+    invalid_type_error: 'Please select a customer.',
+  }),
+  amount: z.coerce
+    .number()
+    .gt(0, { message: 'Please enter an amount greater than $0.' }),
+  status: z.enum(['pending', 'paid'], {
+    invalid_type_error: 'Please select an invoice status.',
+  }),
+  date: z.string(),
+});
+```
+
+- **customerId**: Zod ya lanza un error si el campo del cliente está vacío, ya que espera una cadena de tipo String. Pero agregemos un mensaje amigable si el usuario no selecciona un cliente.
+
+- **amount:** dado que está coaccionando el tipo de cantidad de una cadena a otro, se predeterminará a cero si la cadena está vacía. Digamos que Zod siempre queremos la cantidad mayor que 0 con la función `gt()`
+
+- **status:** Zod ya lanza un error si el campo de estado está vacío, ya que espera "pendiente" o "pagado". También agregemos un mensaje amigable si el usuario no selecciona un estado.
+
+A continuación, actualice su acción createInvoice para aceptar dos parámetros:
+
+```tsx
+// This is temporary until @types/react-dom is updated
+export type State = {
+  errors?: {
+    customerId?: string[];
+    amount?: string[];
+    status?: string[];
+  };
+  message?: string | null;
+};
+ 
+export async function createInvoice(prevState: State, formData: FormData) {
+  // ...
+}
+```
+
+- **formData** - Igual que antes.
+- **prevState** - Contiene el estado aprobado del hook `useFormState`. No lo usará en la acción en este ejemplo, pero es un accesorio requerido.
+
+Luego, cambie la función Zod `parse()` a `safeParse()`
+
+```tsx
+export async function createInvoice(prevState: State, formData: FormData) {
+  // Validate form fields using Zod
+  const validatedFields = CreateInvoice.safeParse({
+    customerId: formData.get('customerId'),
+    amount: formData.get('amount'),
+    status: formData.get('status'),
+  });
+ 
+  // ...
+}
+```
+
+`safeParse()` devolverá un objeto que contenga un campo `succes` or `error`. Esto ayudará a manejar la validación con más gracia sin haber puesto esta lógica dentro del bloque de `try/catch`.
+
+Antes de enviar la información a su base de datos, verifique si los campos de formulario se validaron correctamente con un condicional:
+
+```tsx
+export async function createInvoice(prevState: State, formData: FormData) {
+  // Validate form fields using Zod
+  const validatedFields = CreateInvoice.safeParse({
+    customerId: formData.get('customerId'),
+    amount: formData.get('amount'),
+    status: formData.get('status'),
+  });
+ 
+  // If form validation fails, return errors early. Otherwise, continue.
+  if (!validatedFields.success) {
+    return {
+      errors: validatedFields.error.flatten().fieldErrors,
+      message: 'Missing Fields. Failed to Create Invoice.',
+    };
+  }
+```
+
+Si `validatedFields` no es exitoso, devolvemos los mensajes de error de Zod.
+
+Finalmente, dado que está manejando la validación del formulario por separado, fuera de su bloque `try/catch`, puede devolver un mensaje específico para cualquier error de base de datos, su código final debería verse así:
+
+```tsx
+export async function createInvoice(prevState: State, formData: FormData) {
+  // Validate form using Zod
+  const validatedFields = CreateInvoice.safeParse({
+    customerId: formData.get('customerId'),
+    amount: formData.get('amount'),
+    status: formData.get('status'),
+  });
+ 
+  // If form validation fails, return errors early. Otherwise, continue.
+  if (!validatedFields.success) {
+    return {
+      errors: validatedFields.error.flatten().fieldErrors,
+      message: 'Missing Fields. Failed to Create Invoice.',
+    };
+  }
+ 
+  // Prepare data for insertion into the database
+  const { customerId, amount, status } = validatedFields.data;
+  const amountInCents = amount * 100;
+  const date = new Date().toISOString().split('T')[0];
+ 
+  // Insert data into the database
+  try {
+    await sql`
+      INSERT INTO invoices (customer_id, amount, status, date)
+      VALUES (${customerId}, ${amountInCents}, ${status}, ${date})
+    `;
+  } catch (error) {
+    // If a database error occurs, return a more specific error.
+    return {
+      message: 'Database Error: Failed to Create Invoice.',
+    };
+  }
+ 
+  // Revalidate the cache for the invoices page and redirect the user.
+  revalidatePath('/dashboard/invoices');
+  redirect('/dashboard/invoices');
+}
+```
+
+Genial, ahora mostremos los errores en su componente de formulario. De vuelta en el componente `create-form.tsx`, puede acceder a los errores utilizando el estado de formulario.
+
+Agregue un operador ternario que verifique cada error específico. Por ejemplo, después del campo del cliente, puede agregar:
+
+```tsx
+<form action={dispatch}>
+  <div className="rounded-md bg-gray-50 p-4 md:p-6">
+    {/* Customer Name */}
+    <div className="mb-4">
+      <label htmlFor="customer" className="mb-2 block text-sm font-medium">
+        Choose customer
+      </label>
+      <div className="relative">
+        <select
+          id="customer"
+          name="customerId"
+          className="peer block w-full rounded-md border border-gray-200 py-2 pl-10 text-sm outline-2 placeholder:text-gray-500"
+          defaultValue=""
+          aria-describedby="customer-error"
+        >
+          <option value="" disabled>
+            Select a customer
+          </option>
+          {customerNames.map((name) => (
+            <option key={name.id} value={name.id}>
+              {name.name}
+            </option>
+          ))}
+        </select>
+        <UserCircleIcon className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-500" />
+      </div>
+      {state.errors?.customerId ? (
+        <div
+          id="customer-error"
+          aria-live="polite"
+          className="mt-2 text-sm text-red-500"
+        >
+          {state.errors.customerId.map((error: string) => (
+            <p key={error}>{error}</p>
+          ))}
+        </div>
+      ) : null}
+    </div>
+    // ...
+  </div>
+</form>
+```
+
+En el código anterior, también está agregando las siguientes etiquetas de ARIA:
+
+`aria-describedby="customer-error"` esto establece una relación entre el elemento `select` y el contenedor de mensaje de error. Indica que el contenedor con `id="customer-error"` describe el `select`.Los lectores de pantalla leerán esta descripción cuando el usuario interactúe con el cuadro `select` para notificarlos de errores.
+
+`id = "Customer-error"` este atributo de **id** identifica de manera única el elemento HTML que contiene el mensaje de error para la entrada Seleccionar. Esto es necesario para que `aria-describedby` estableca la relación.
+
+`aria-live="polite"` el lector de pantalla debe notificar cortésmente al usuario cuándo se actualiza el error. Cuando el contenido cambia (por ejemplo, cuando un usuario corrige un error), el lector de pantalla anunciará estos cambios, pero solo cuando el usuario esté inactivo para no interrumpirlos.
+
+
+### Práctica: Agregar etiquetas de aria
+
+Usando el ejemplo anterior, agregue errores a sus campos de formulario restantes. También debe mostrar un mensaje en la parte inferior del formulario si falta algún campo. Tu interfaz de usuario debería verse así:
+
+![Interfaz form create controlada mostrando errores](https://nextjs.org/_next/image?url=%2Flearn%2Fdark%2Fform-validation-page.png&w=1080&q=75&dpl=dpl_3h1BESzeFKFcy7pGi2Svm9s7FMVm)
+
+Si desea desafiarse, tome el conocimiento que ha aprendido en este capítulo y agregue la validación de formulario al componente `edit-form.tsx`.
+
+Tendrás que:
+
+- Agregue `useFormState` a su componente `edit-form.tsx`.
+- Edite la acción `updateInvoice` para manejar los errores de validación de Zod.
+- Muestre los errores en su componente y agregue aria labels para mejorar la accesibilidad.
+
+> **/app/ui/invoices/edit-form.tsx**
+```tsx
+export default function EditInvoiceForm({
+  invoice,
+  customers,
+}: {
+  invoice: InvoiceForm;
+  customers: CustomerField[];
+}) {
+  const initialState = { message: null, errors: {} };
+  const updateInvoiceWithId = updateInvoice.bind(null, invoice.id);
+  const [state, dispatch] = useFormState(updateInvoiceWithId, initialState);
+ 
+  return <form action={dispatch}></form>;
+}
+```
+
+> **/app/lib/actions.ts**
+```tsx
+export async function updateInvoice(
+  id: string,
+  prevState: State,
+  formData: FormData,
+) {
+  const validatedFields = UpdateInvoice.safeParse({
+    customerId: formData.get('customerId'),
+    amount: formData.get('amount'),
+    status: formData.get('status'),
+  });
+ 
+  if (!validatedFields.success) {
+    return {
+      errors: validatedFields.error.flatten().fieldErrors,
+      message: 'Missing Fields. Failed to Update Invoice.',
+    };
+  }
+ 
+  const { customerId, amount, status } = validatedFields.data;
+  const amountInCents = amount * 100;
+ 
+  try {
+    await sql`
+      UPDATE invoices
+      SET customer_id = ${customerId}, amount = ${amountInCents}, status = ${status}
+      WHERE id = ${id}
+    `;
+  } catch (error) {
+    return { message: 'Database Error: Failed to Update Invoice.' };
+  }
+ 
+  revalidatePath('/dashboard/invoices');
+  redirect('/dashboard/invoices');
+}
+```
