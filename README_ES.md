@@ -17,7 +17,7 @@ Para este curso, crearemos una versión simplificada de un panel financiero que 
 A continuación se ofrece una descripción general de las funciones que aprenderemos en este curso:
 
 - [**Estilo:**](#estilo-css) las diferentes formas de diseñar su aplicación en Next.js.
-- [**Optimizaciones:**] cómo optimizar imágenes, enlaces y fuentes.
+- [**Optimizaciones:**](#optimización-de-fuentes-e-imágenes) cómo optimizar imágenes, enlaces y fuentes.
 - [**Enrutamiento:**] cómo crear diseños y páginas anidados utilizando el enrutamiento del sistema de archivos.
 - [**Obtención de datos:**] cómo configurar una base de datos en Vercel y mejores prácticas para la obtención y transmisión por secuencias.
 - [**Renderizado estatico y dinámico:**] qué es el renderizado estático y cómo puede mejorar el rendimiento de su aplicación y qué es el renderizado dinámico y como usarlo.
@@ -218,4 +218,210 @@ Actualmente, su página de inicio no tiene ningún estilo. Veamos las diferentes
     - Sass que te permite importar archivos .css y .scss.
     - Bibliotecas CSS-in-JS como styled-jsx, styled-components yemotion.
     - Eche un vistazo a la documentación de CSS para obtener más información.
+
+---
+
+## Optimización de fuentes e imágenes
+
+En el capítulo anterior, aprendiste cómo diseñar tu aplicación Next.js. Sigamos trabajando en su página de inicio agregando una fuente personalizada y una imagen principal.
+
+
+1. Agregamos fuentes personalizadas con `next/font`.
+
+    - **¿Por qué optimizar las fuentes?**
+
+    Las fuentes juegan un papel importante en el diseño de un sitio web, pero el uso de fuentes personalizadas en su proyecto puede afectar el rendimiento si es necesario buscar y cargar los archivos de fuentes.
+
+    El cambio de diseño acumulativo o **Cumulative Layout Shift** es una métrica utilizada por Google para evaluar el rendimiento y la experiencia del usuario de un sitio web. Con las fuentes, el cambio de diseño ocurre cuando el navegador inicialmente muestra el texto en una fuente alternativa o del sistema y luego lo cambia por una fuente personalizada una vez que se ha cargado. Este intercambio puede hacer que el tamaño, el espaciado o el diseño del texto cambien, desplazando elementos a su alrededor.
+
+    ![Cumulative Layout Shift](https://nextjs.org/_next/image?url=%2Flearn%2Fdark%2Ffont-layout-shift.png&w=1920&q=75&dpl=dpl_Ejtt9BCyCFNeRJdBoVsM9Es9x8xe)
+
+    Next.js optimiza automáticamente las fuentes en la aplicación cuando usa el módulo **next/font**. Descarga archivos de fuentes en el momento de la compilación y los aloja con sus otros activos estáticos. Esto significa que cuando un usuario visita su aplicación, no hay solicitudes de fuentes de red adicionales que afectarían el rendimiento.
+
+    - **Agregar una fuente principal**
+
+    ¡Agreguemos una fuente personalizada de Google a su aplicación para ver cómo funciona!
+
+    En su carpeta **/app/ui**, cree un nuevo archivo llamado **fonts.ts**. Utilizará este archivo para conservar las fuentes que se utilizarán en toda su aplicación.
+
+    Importe la fuente **Inter** del módulo **next/font/google**; esta será su fuente principal. Luego, especifica qué subconjunto deseas cargar. En este caso, 'latín'.
+
+    ```tsx
+    import { Inter } from 'next/font/google';
+ 
+    export const inter = Inter({ subsets: ['latin'] });
+    ```
+
+    Finally, add the font to the \<body\> element in **/app/layout.tsx**:
+
+    ```tsx
+    import '@/app/ui/global.css';
+    import { inter } from '@/app/ui/fonts';
+    
+    export default function RootLayout({
+        children,
+        }: {
+        children: React.ReactNode;
+        }) {
+        return (
+            <html lang="en">
+            <body className={`${inter.className} antialiased`}>{children}</body>
+            </html>
+        );
+    }
+    ```
+    > Al agregar Inter al elemento \<body\>, la fuente se aplicará en toda su aplicación. Aquí, también estás agregando la clase **antialiased** Tailwind que suaviza la fuente. No es necesario utilizar esta clase, pero añade un toque agradable.
+
+    - ¡Ahora es tu turno! En su archivo fonts.ts, importe una fuente secundaria llamada Lusitana y pásela al elemento \<p\> en su archivo **/app/page.tsx**. Además de especificar un subconjunto como lo hizo antes, también deberá especificar el peso de la fuente.
+
+        ```tsx
+        // /app/ui/fonts.ts
+        import { Inter, Lusitana } from 'next/font/google';
+ 
+        export const inter = Inter({ subsets: ['latin'] });
+        
+        export const lusitana = Lusitana({
+        weight: ['400', '700'],
+        subsets: ['latin'],
+        });
+
+        // /app/page.tsx
+
+        import AcmeLogo from '@/app/ui/acme-logo';
+        import { ArrowRightIcon } from '@heroicons/react/24/outline';
+        import { lusitana } from '@/app/ui/fonts';
+        
+        export default function Page() {
+        return (
+            // ...
+            <p
+            className={`${lusitana.className} text-xl text-gray-800 md:text-3xl md:leading-normal`}
+            >
+            <strong>Welcome to Acme.</strong> This is the example for the{' '}
+            <a href="https://nextjs.org/learn/" className="text-blue-500">
+                Next.js Learn Course
+            </a>
+            , brought to you by Vercel.
+            </p>
+            // ...
+        );
+        }
+        ```
+
+        > Finally, the <AcmeLogo /> component also uses Lusitana. It was commented out to prevent errors, you can now uncomment it:
+
+        ```tsx
+        // ...
+ 
+        export default function Page() {
+        return (
+            <main className="flex min-h-screen flex-col p-6">
+            <div className="flex h-20 shrink-0 items-end rounded-lg bg-blue-500 p-4 md:h-52">
+                <AcmeLogo />
+                {/* ... */}
+            </div>
+            </main>
+        );
+        }
+        ```
+
+
+2. Agregamos imágenes con `next/image`.
+
+    - **¿Por qué optimizar imágenes?**
+    Next.js puede ofrecer recursos estáticos, como imágenes, en la carpeta /public de nivel superior. Se puede hacer referencia a los archivos dentro de /public en su aplicación.
+
+    Si miras dentro de la carpeta /public, verás que hay dos imágenes: **hero-desktop.png** y **hero-mobile.png**. Estas dos imágenes son completamente diferentes y se mostrarán dependiendo de si el dispositivo del usuario es de escritorio o móvil.
+
+    Con HTML normal, agregaría una imagen de la siguiente manera:
+
+    ```html
+    <img
+    src="/hero.png"
+    alt="Screenshots of the dashboard project showing desktop and mobile versions"
+    />
+    ```
+
+    Sin embargo, esto significa que tienes que hacer manualmente lo siguiente:
+
+    - Asegúrese de que su imagen responda en diferentes tamaños de pantalla.
+    - Especifique tamaños de imagen para diferentes dispositivos.
+    - Evite cambios de diseño a medida que se cargan las imágenes.
+    - Carga diferida de imágenes que están fuera de la ventana gráfica del usuario.
+    - La optimización de imágenes es un tema amplio en el desarrollo web que podría considerarse una especialización en sí misma. En lugar de implementar manualmente estas optimizaciones, puede utilizar el componente `next/image` para optimizar automáticamente sus imágenes.
+
+    **El componente \<Imagen\>**
+
+    El componente \<Imagen\> es una extensión de la etiqueta HTML \<img\> y viene con optimización automática de la imagen, como por ejemplo:
+
+    - Evitar el cambio de diseño automáticamente cuando se cargan las imágenes.
+    - Cambiar el tamaño de las imágenes para evitar enviar imágenes grandes a dispositivos con una ventana gráfica más pequeña.
+    - Carga diferida de imágenes de forma predeterminada (las imágenes se cargan a medida que ingresan a la ventana gráfica).
+    - Ofrecer imágenes en formatos modernos, como WebP y AVIF, cuando el navegador lo admite.
+
+    **Agregar la imagen principal del escritorio**
+
+    - Usemos el componente \<Imagen\>.
+
+    En su archivo **/app/page.tsx**, importe el componente de la `next/image`. Luego, agregue la imagen debajo del comentario:
+
+    ```tsx
+    // /app/page.tsx
+    import AcmeLogo from '@/app/ui/acme-logo';
+    import { lusitana } from '@/app/ui/fonts';
+    import Image from 'next/image';
+    
+    export default function Page() {
+    return (
+        // ...
+        <div className="flex items-center justify-center p-6 md:w-3/5 md:px-28 md:py-12">
+        {/* Add Hero Images Here */}
+        <Image
+            src="/hero-desktop.png"
+            width={1000}
+            height={760}
+            className="hidden md:block"
+            alt="Screenshots of the dashboard project showing desktop and mobile versions"
+        />
+        </div>
+        //...
+    );
+    }
+    ```
+
+    Aquí, estás configurando el ancho en 1000 y el alto en 760 píxeles. Es una buena práctica establecer el ancho y el alto de las imágenes para evitar cambios en el diseño; estas deben tener una relación de aspecto idéntica a la imagen de origen.
+
+    También notarás la clase oculta para eliminar la imagen del DOM en pantallas móviles y md:block para mostrar la imagen en pantallas de escritorio.
+
+    Así es como debería verse su página de inicio ahora:
+
+    ![Página principal con Imagen Optimizada](https://nextjs.org/_next/image?url=%2Flearn%2Fdark%2Fhome-page-with-hero.png&w=1080&q=75&dpl=dpl_Ejtt9BCyCFNeRJdBoVsM9Es9x8xe)
+
+    - Agregar la imagen principal del móvil
+
+    ¡Ahora es tu turno! Debajo de la imagen que acaba de agregar, agregue otro componente \<Imagen\> para mobile-hero.png.
+
+    La imagen debe tener un ancho de 560 y un alto de 620 píxeles.
+    Debe mostrarse en las pantallas de los móviles y ocultarse en el escritorio; puede utilizar herramientas de desarrollo para comprobar si las imágenes del escritorio y del móvil se intercambian correctamente.
+
+    ```tsx
+    <Image
+        src="/hero-mobile.png"
+        width={560}
+        height={620}
+        className="block md:hidden"
+        alt="Screenshot of the dashboard project showing mobile version"
+    />
+    ```
+
+    > ¡Excelente! Su página de inicio ahora tiene una fuente personalizada e imágenes destacadas.
+
+### Lectura recomendada
+
+Hay mucho más que aprender sobre estos temas, incluida la optimización de imágenes remotas y el uso de archivos de fuentes locales. Si desea profundizar en fuentes e imágenes, consulte:
+
+- [Image Optimization Docs](https://nextjs.org/docs/app/building-your-application/optimizing/images)
+- [Font Optimization Docs](https://nextjs.org/docs/app/building-your-application/optimizing/fonts)
+- [Improving Web Performance with Images (MDN)](https://developer.mozilla.org/en-US/docs/Learn/Performance/Multimedia)
+- [Web Fonts (MDN)](https://developer.mozilla.org/en-US/docs/Learn/CSS/Styling_text/Web_fonts)
 
