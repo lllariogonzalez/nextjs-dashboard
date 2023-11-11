@@ -20,7 +20,7 @@ A continuación se ofrece una descripción general de las funciones que aprender
 - [**Optimizaciones:**](#optimización-de-fuentes-e-imágenes) cómo optimizar imágenes, enlaces y fuentes.
 - [**Enrutamiento:**](#crear-diseños-y-páginas) cómo crear diseños y páginas anidados utilizando el enrutamiento del sistema de archivos.
 - [**Obtención de datos:**](#configurando-su-base-de-datos) cómo configurar una base de datos en Vercel y mejores prácticas para la obtención y transmisión por secuencias.
-- [**Renderizado estatico y dinámico:**] qué es el renderizado estático y cómo puede mejorar el rendimiento de su aplicación y qué es el renderizado dinámico y como usarlo.
+- [**Renderizado estatico y dinámico:**](#representación-estática-y-dinámica) qué es el renderizado estático y cómo puede mejorar el rendimiento de su aplicación y qué es el renderizado dinámico y como usarlo.
 - [**Streaming**] qué es el streaming y cuándo puedes utilizarlo con loading, Suspense y esqueletos de carga.
 - [**Búsqueda y paginación:**] cómo implementar la búsqueda y paginación utilizando parámetros de búsqueda de URL.
 - [**Mutación de datos:**] cómo mutar datos usando React Server Actions y revalidar el caché de Next.js.
@@ -933,4 +933,142 @@ Al usar este patrón, puedes:
 Comenzar a ejecutar todas las recuperaciones de datos al mismo tiempo, lo que puede generar mejoras en el rendimiento.
 
 Sin embargo, existe una desventaja al utilizar este patrón de JavaScript: ¿qué sucede si una solicitud de datos es más lenta que todas las demás?
+
+---
+
+## Representación estática y dinámica
+
+Obtenga información sobre cómo puede utilizar para optimizar aún más la obtención de datos con PPR y Streaming.
+
+Este capítulo contiene funciones experimentales de Next.js 14 que están sujetas a cambios. El contenido puede actualizarse a medida que se finalicen las funciones.
+
+En el capítulo anterior, obtuvo datos para la página Descripción general del panel. Sin embargo, analizamos brevemente dos limitaciones de la configuración actual:
+
+- Las solicitudes de datos están creando una cascada involuntaria.
+- El panel es estático, por lo que las actualizaciones de datos no se reflejarán en su aplicación.
+
+Estos son los temas que cubriremos:
+
+- Qué es el renderizado estático y cómo puede mejorar el rendimiento de su aplicación.
+
+- Qué es el renderizado dinámico y cuándo usarlo.
+
+- Diferentes enfoques para hacer que su tablero sea dinámico.
+
+- La limitación de recuperar datos en el momento de la solicitud.
+
+### ¿Qué es el renderizado estático?
+
+Con la representación estática, la obtención y representación de datos se realiza en el servidor en el momento de la compilación (cuando se implementa) o durante la revalidación. Luego, el resultado se puede distribuir y almacenar en caché (stored) en una red de entrega de contenido (Content Delivery Network (CDN)).
+
+![Cached vs Uncached](https://nextjs.org/_next/image?url=%2Flearn%2Fdark%2Fstatic-site-generation.png&w=1920&q=75&dpl=dpl_8mqvTcfbhtdnPWFJCvFr8naAHAAq)
+
+Cada vez que un usuario visita su aplicación, se muestra el resultado almacenado en caché. Hay un par de beneficios del renderizado estático:
+
+- **Sitios web más rápidos:** el contenido prerenderizado se puede almacenar en caché. Esto garantiza que los usuarios de todo el mundo puedan acceder al contenido de su sitio web de forma más rápida y fiable.
+- **Carga reducida del servidor:** debido a que el contenido se almacena en caché, su servidor no tiene que generar contenido dinámicamente para cada solicitud de usuario.
+- **SEO:** el contenido prerenderizado es más fácil de indexar para los rastreadores de los motores de búsqueda, ya que el contenido ya está disponible cuando se carga la página. Esto puede conducir a una mejor clasificación en los motores de búsqueda.
+
+La representación estática es útil para la interfaz de usuario sin datos o datos que se comparten entre usuarios, como una publicación de blog estática o una página de producto. Puede que no sea una buena opción para un panel que tenga datos que se actualicen periódicamente.
+
+Lo opuesto al **renderizado estático** es el **renderizado dinámico**.
+
+### ¿Qué es el renderizado dinámico?
+
+Con la representación dinámica, el contenido se presenta en el servidor para cada usuario en el momento de la solicitud (cuando el usuario visita la página). Hay un par de beneficios del renderizado dinámico:
+
+- **Datos en tiempo real:** la representación dinámica permite que su aplicación muestre datos en tiempo real o actualizados con frecuencia. Esto es ideal para aplicaciones donde los datos cambian con frecuencia.
+
+- **Contenido específico del usuario:** es más fácil ofrecer contenido específico del usuario, como paneles personalizados o perfiles de usuario, a través de la representación dinámica, ya que los datos se actualizan en función de la interacción del usuario.
+
+- **Solicitar información sobre el tiempo:** la representación dinámica le permite acceder a información que solo se puede conocer en el momento de la solicitud, como las cookies o los parámetros de búsqueda de URL.
+
+## Como Dinamizar nuestro tablero
+
+De forma predeterminada, `@vercel/postgres` no establece su propia semántica de almacenamiento en caché. Esto permite que el marco establezca su propio comportamiento estático y dinámico.
+
+Puede utilizar una API de Next.js llamada unstable_noStore dentro de los componentes de su servidor o funciones de recuperación de datos para optar por no participar en la representación estática. Agreguemos esto.
+
+En su `data.ts`, importe `unstable_noStore` desde `next/cache` y llámelo la parte superior de sus funciones de obtención de datos:
+
+```ts
+// ...
+import { unstable_noStore as noStore } from 'next/cache';
+ 
+export async function fetchRevenue() {
+  // Add noStore() here to prevent the response from being cached.
+  // This is equivalent to in fetch(..., {cache: 'no-store'}).
+  noStore();
+ 
+  // ...
+}
+ 
+export async function fetchLatestInvoices() {
+  noStore();
+  // ...
+}
+ 
+export async function fetchCardData() {
+  noStore();
+  // ...
+}
+ 
+export async function fetchFilteredInvoices(
+  query: string,
+  currentPage: number,
+) {
+  noStore();
+  // ...
+}
+ 
+export async function fetchInvoicesPages(query: string) {
+  noStore();
+  // ...
+}
+ 
+export async function fetchFilteredCustomers(query: string) {
+  noStore();
+  // ...
+}
+ 
+export async function fetchInvoiceById(query: string) {
+  noStore();
+  // ...
+}
+```
+
+> Nota: `unstable_noStore` es una API experimental y puede cambiar en el futuro. Si prefiere utilizar una API estable en sus propios proyectos, también puede utilizar la opción de configuración de segmento `export constdynamic = "force-dynamic"`.
+
+**Simular una recuperación de datos lenta**
+
+Hacer que el tablero sea dinámico es un buen primer paso. Sin embargo... todavía hay un problema que mencionamos en el capítulo anterior. ¿Qué sucede si una solicitud de datos es más lenta que todas las demás?
+
+Simulemos una recuperación lenta de datos para ver qué sucede. En su archivo `data.ts`, descomente el archivo console.log y setTimeout dentro de `fetchRevenue()`:
+
+```ts
+export async function fetchRevenue() {
+  try {
+    // We artificially delay a response for demo purposes.
+    // Don't do this in a real application
+    console.log('Fetching revenue data...');
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+ 
+    const data = await sql<Revenue>`SELECT * FROM revenue`;
+ 
+    console.log('Data fetch complete after 3 seconds.');
+ 
+    return data.rows;
+  } catch (error) {
+    console.error('Database Error:', error);
+    throw new Error('Failed to fetch revenue data.');
+  }
+}
+```
+
+Aquí, ha agregado un retraso artificial de 3 segundos para simular una recuperación de datos lenta. El resultado es que ahora toda su página está bloqueada mientras se recuperan los datos.
+
+Diagrama que muestra toda la página bloqueada para su procesamiento mientras se obtienen datos
+Lo que nos lleva a un desafío común que los desarrolladores deben resolver:
+
+Con el renderizado dinámico, su aplicación es tan rápida como su recuperación de datos más lenta.
 
