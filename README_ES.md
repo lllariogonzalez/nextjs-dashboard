@@ -19,7 +19,7 @@ A continuación se ofrece una descripción general de las funciones que aprender
 - [**Estilo:**](#estilo-css) las diferentes formas de diseñar su aplicación en Next.js.
 - [**Optimizaciones:**](#optimización-de-fuentes-e-imágenes) cómo optimizar imágenes, enlaces y fuentes.
 - [**Enrutamiento:**](#crear-diseños-y-páginas) cómo crear diseños y páginas anidados utilizando el enrutamiento del sistema de archivos.
-- [**Obtención de datos:**] cómo configurar una base de datos en Vercel y mejores prácticas para la obtención y transmisión por secuencias.
+- [**Obtención de datos:**](#configurando-su-base-de-datos) cómo configurar una base de datos en Vercel y mejores prácticas para la obtención y transmisión por secuencias.
 - [**Renderizado estatico y dinámico:**] qué es el renderizado estático y cómo puede mejorar el rendimiento de su aplicación y qué es el renderizado dinámico y como usarlo.
 - [**Streaming**] qué es el streaming y cuándo puedes utilizarlo con loading, Suspense y esqueletos de carga.
 - [**Búsqueda y paginación:**] cómo implementar la búsqueda y paginación utilizando parámetros de búsqueda de URL.
@@ -590,4 +590,79 @@ export default function NavLinks() {
   );
 }
 ```
+
+---
+
+## Configurando su base de datos
+
+¡Creemos una base de datos para comenzar a buscar datos reales!
+
+Antes de poder continuar trabajando en su panel, necesitará algunos datos. En este capítulo, configurará una base de datos PostgreSQL usando @vercel/postgres. Si ya está familiarizado con PostgreSQL y prefiere utilizar su propio proveedor, puede omitir este capítulo y configurarlo usted mismo. De lo contrario, ¡continuemos!
+
+- Envía tu proyecto a GitHub.
+
+A continuación te muestro como crear un repositorio local y sincronizarlo con GitHub
+
+```bash
+git init # inicializa el repositorio.
+
+git add . # añade todos los archivos excepto los excluidos por .gitignore al stage.
+
+git commit -m "MENSAJE_DEL_COMMIT" # confirma los cambios con un mensaje descriptivo.
+
+git branch -M main # pasamos a una rama main si es necesario por convención ya no se usa master
+
+git remote add origin https://github.com/"NOMBRE_USUARIO"/"NOMBRE_PROYECTO".git # vinculamos al remoto
+
+git push -u origin main # subimos los cambios a github, sincronizando los datos
+```
+
+- Configure una cuenta de Vercel y vincule su repositorio de GitHub para obtener vistas previas e implementaciones instantáneas.
+
+![Conexión de Vercel con el repositorio de Github](https://nextjs.org/_next/image?url=%2Flearn%2Fdark%2Fimport-git-repo.png&w=1080&q=75&dpl=dpl_3KvQ7chUpCwD5geTFxau9SMj51uW)
+
+> Nombre el proyecto y haga el Deploy.
+
+¡Felicidades! 🎉 Su proyecto ya está implementado.
+
+- Cree y vincule su proyecto a una base de datos de Postgres.
+
+Para configurar una base de datos, haga clic en Continuar al panel y seleccione la pestaña Almacenamiento en el panel de su proyecto. Seleccione **Connect Store → Crear nuevo → Postgres → Continuar.**
+
+Una vez conectado, navegue hasta la pestaña .env.local, haga clic en Mostrar secreto y copiar fragmento.
+
+![Variables de entorno de la Base de Datos Postgres](https://nextjs.org/_next/image?url=%2Flearn%2Fdark%2Fdatabase-dashboard.png&w=1080&q=75&dpl=dpl_3KvQ7chUpCwD5geTFxau9SMj51uW)
+
+- Sembrar la base de datos con datos iniciales.
+
+Ahora que se ha creado su base de datos, vamos a sembrarla con algunos datos iniciales. Esto le permitirá tener algunos datos con los que trabajar mientras crea el panel.
+
+En la carpeta /scripts de su proyecto, hay un archivo llamado seed.js. Este script contiene las instrucciones para crear y generar las facturas, los clientes, los usuarios y las tablas de ingresos.
+
+No se preocupe si no comprende todo lo que hace el código, pero para brindarle una descripción general, el script usa SQL para crear las tablas y toma los datos del archivo placeholder-data.js para completarlas después de que hayan sido creado.
+
+A continuación, en su archivo package.json, agregue la siguiente línea a sus scripts:
+
+```json
+"scripts": {
+  "build": "next build",
+  "dev": "next dev",
+  "start": "next start",
+  "seed": "node -r dotenv/config ./scripts/seed.js"
+},
+```
+
+Ahora, ejecute `npm run seed`. Debería ver algunos mensajes de console.log en su terminal para informarle que el script se está ejecutando.
+
+Puede explorar la base de datos y sus tablas en Vercel en Data > Browse, y ejecutar consultas en Data > Query. Esta sección admite comandos SQL estándar. Por ejemplo, al ingresar clientes DROP TABLE se eliminará la tabla "clientes" junto con todos sus datos, ¡así que tenga cuidado!
+
+Ejecutemos su primera consulta de base de datos. Pegue y ejecute el siguiente código SQL en la interfaz de Vercel:
+
+```sql
+SELECT invoices.amount, customers.name
+FROM invoices
+JOIN customers ON invoices.customer_id = customers.id
+WHERE invoices.amount = 666;
+```
+> La factura pertenece al cliente Evil Rabbit
 
