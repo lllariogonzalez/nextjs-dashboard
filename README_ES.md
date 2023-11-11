@@ -666,3 +666,271 @@ WHERE invoices.amount = 666;
 ```
 > La factura pertenece al cliente Evil Rabbit
 
+---
+
+# Recuperacion de datos
+
+Analicemos las diferentes formas en que puede recuperar datos de su base de datos, incluido el uso de API, SQL y alternativas.
+
+Ahora que ha creado y sembrado su base de datos, analicemos las diferentes formas en que puede obtener datos para su aplicación y elijamos la más adecuada para la página de descripción general del panel.
+
+Temas que veremos en esta sección:
+
+- Conozca algunos enfoques para recuperar datos: API, ORM, SQL, etc.
+
+- Cómo los componentes del servidor nos ayudan a acceder a nuestros recursos de back-end de forma más segura.
+
+- Qué son las cascadas de red.
+
+- Cómo implementar la recuperación de datos en paralelo utilizando un patrón de JavaScript.
+
+### Elegir cómo recuperar datos
+
+- **Capa API**: Las **API** son una capa intermediaria entre el código de su aplicación y la base de datos. Hay algunos casos en los que podría utilizar una API:
+
+    - Si está utilizando servicios de terceros que proporcionan una API.
+    - Si está obteniendo datos del cliente, querrá tener una capa API que se ejecute en el servidor para evitar exponer los secretos de su base de datos al cliente.
+    - En Next.js, puede crear puntos finales de API utilizando controladores de ruta.
+
+- **Consultas de bases de datos**: Cuando crea una aplicación de pila completa, también necesitará escribir lógica para interactuar con su base de datos. Para bases de datos relacionales como Postgres, puede hacer esto con SQL o un ORM como Prisma. Hay algunos casos en los que es necesario escribir consultas a la base de datos:
+
+    - Al crear sus puntos finales de API, necesita escribir lógica para interactuar con su base de datos.
+    - Si está utilizando componentes de servidor React (obteniendo datos en el servidor), puede omitir la capa API y consultar su base de datos directamente sin correr el riesgo de exponer los secretos de su base de datos al cliente.
+
+
+En la siguiente sección, exploraremos cómo puede recuperar datos utilizando un enfoque relativamente nuevo: componentes asíncronos de React Server.
+
+**Uso de componentes del servidor para recuperar datos**
+De forma predeterminada, las aplicaciones Next.js usan componentes de servidor React y usted puede optar por componentes de cliente cuando sea necesario. Existen algunos beneficios al recuperar datos con los componentes de React Server:
+
+Los componentes del servidor se ejecutan en el servidor, por lo que puede mantener costosas recuperaciones de datos y lógica en el servidor y solo enviar el resultado al cliente.
+Los componentes del servidor respaldan las promesas y brindan una solución más simple para tareas asincrónicas como la recuperación de datos. Puede utilizar la sintaxis async/await sin recurrir a las bibliotecas useEffect, useState o de recuperación de datos.
+Dado que los componentes del servidor se ejecutan en el servidor, puede consultar la base de datos directamente sin una capa API adicional.
+
+### Usando SQL
+
+Para nuestro proyecto, escribirá consultas de bases de datos utilizando el SDK de Vercel Postgres y SQL. Hay algunas razones por las que usaremos SQL:
+
+SQL es el estándar de la industria para consultar bases de datos relacionales (por ejemplo, los ORM generan SQL internamente).
+Tener un conocimiento básico de SQL puede ayudarle a comprender los fundamentos de las bases de datos relacionales, lo que le permitirá aplicar sus conocimientos a otras herramientas.
+SQL es versátil y le permite recuperar y manipular datos específicos.
+El SDK de Vercel Postgres proporciona protección contra inyecciones de SQL.
+
+Vaya a `/app/lib/data.ts`, aquí verá que estamos importando la función sql desde @vercel/postgres. Esta función le permite consultar su base de datos:
+
+```ts
+import { sql } from '@vercel/postgres';
+ 
+// ...
+```
+
+Puede llamar a sql dentro de cualquier componente del servidor. Pero para permitirle navegar por los componentes más fácilmente, hemos mantenido todas las consultas de datos en el archivo data.ts y puede importarlas a los componentes.
+
+### Obteniendo datos para la página de descripción general del panel
+
+Ahora que comprende las diferentes formas de obtener datos, obtengamos datos para la página de descripción general del panel. Navegue hasta `/app/dashboard/page.tsx`, pegue el siguiente código y dedique un tiempo a explorarlo:
+
+```tsx
+import { Card } from '@/app/ui/dashboard/cards';
+import RevenueChart from '@/app/ui/dashboard/revenue-chart';
+import LatestInvoices from '@/app/ui/dashboard/latest-invoices';
+import { lusitana } from '@/app/ui/fonts';
+ 
+export default async function Page() {
+  return (
+    <main>
+      <h1 className={`${lusitana.className} mb-4 text-xl md:text-2xl`}>
+        Dashboard
+      </h1>
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        {/* <Card title="Collected" value={totalPaidInvoices} type="collected" /> */}
+        {/* <Card title="Pending" value={totalPendingInvoices} type="pending" /> */}
+        {/* <Card title="Total Invoices" value={numberOfInvoices} type="invoices" /> */}
+        {/* <Card
+          title="Total Customers"
+          value={numberOfCustomers}
+          type="customers"
+        /> */}
+      </div>
+      <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-4 lg:grid-cols-8">
+        {/* <RevenueChart revenue={revenue}  /> */}
+        {/* <LatestInvoices latestInvoices={latestInvoices} /> */}
+      </div>
+    </main>
+  );
+}
+```
+
+La página es un componente asíncrono. Esto le permite utilizar await para recuperar datos.
+También hay 3 componentes que reciben datos: `<Card>, <RevenueChart> y <LatestInvoices>`. Actualmente están comentados para evitar que la aplicación produzca errores.
+
+### Obteniendo datos para `<RevenueChart/>`
+
+Para recuperar datos para el componente `<RevenueChart/>`, importe la función fetchRevenue desde `data.ts` y llámela dentro de su componente:
+
+```tsx
+import { Card } from '@/app/ui/dashboard/cards';
+import RevenueChart from '@/app/ui/dashboard/revenue-chart';
+import LatestInvoices from '@/app/ui/dashboard/latest-invoices';
+import { lusitana } from '@/app/ui/fonts';
+import { fetchRevenue } from '@/app/lib/data';
+ 
+export default async function Page() {
+  const revenue = await fetchRevenue();
+  // ...
+}
+```
+
+Luego, descomente el componente `<RevenueChart/>` y cualquier cosa dentro de la función `RevenueChart()`. Verifique su localhost, ahora está utilizando los datos de ingresos en su componente.
+
+![Obteniendo datos, gráfico de ingresos](https://nextjs.org/_next/image?url=%2Flearn%2Fdark%2Frecent-revenue.png&w=1080&q=75&dpl=dpl_3KvQ7chUpCwD5geTFxau9SMj51uW)
+
+### Obteniendo datos para `<LatestInvoices/>`
+
+Para el componente `<LatestInvoices />`, necesitamos obtener las últimas 5 facturas, ordenadas por fecha.
+
+Puede buscar todas las facturas y ordenarlas usando JavaScript. Esto no es un problema ya que nuestros datos son pequeños, pero a medida que su aplicación crece, puede aumentar significativamente la cantidad de datos transferidos en cada solicitud y el JavaScript necesario para clasificarlos.
+
+En lugar de ordenar las últimas facturas en la memoria, puede utilizar una consulta SQL para recuperar solo las últimas 5 facturas. Por ejemplo, esta es la consulta SQL de su archivo `data.ts`:
+
+```tsx
+// Fetch the last 5 invoices, sorted by date
+const data = await sql<LatestInvoiceRaw>`
+  SELECT invoices.amount, customers.name, customers.image_url, customers.email
+  FROM invoices
+  JOIN customers ON invoices.customer_id = customers.id
+  ORDER BY invoices.date DESC
+  LIMIT 5`;
+```
+
+Ahora en su página, importe la función fetchLatestInvoices:
+
+Luego, descomente el componente `<LatestInvoices />`.
+
+Si visita su servidor local, debería ver que solo se devuelven los últimos 5 de la base de datos. ¡Con suerte, estás empezando a ver las ventajas de consultar tu base de datos directamente!
+
+![Gráfico de ingresos y últimas 5 facturas](https://nextjs.org/_next/image?url=%2Flearn%2Fdark%2Flatest-invoices.png&w=1080&q=75&dpl=dpl_3KvQ7chUpCwD5geTFxau9SMj51uW)
+
+### Práctica: Obtener datos para los componentes `<Card>`
+
+Ahora es tu turno de recuperar datos para los componentes `<Card>`. Las tarjetas mostrarán los siguientes datos:
+
+- Importe total de facturas cobradas.
+- Importe total de facturas pendientes.
+- Número total de facturas.
+- Número total de clientes.
+
+Nuevamente, podría verse tentado a recuperar todas las facturas y clientes y utilizar JavaScript para manipular los datos. Por ejemplo, podría utilizar Array.length para obtener el número total de facturas y clientes.
+Pero con SQL, sólo puedes recuperar los datos que necesitas. Es un poco más largo que usar Array.length, pero significa que es necesario transferir menos datos durante la solicitud. Esta es la alternativa SQL:
+
+```ts
+const invoiceCountPromise = sql`SELECT COUNT(*) FROM invoices`;
+const customerCountPromise = sql`SELECT COUNT(*) FROM customers`;
+```
+
+Solución:
+
+La función que necesitará importar se llama `fetchCardData`. Necesitará desestructurar los valores devueltos por la función.
+
+```tsx
+import { Card } from '@/app/ui/dashboard/cards';
+import RevenueChart from '@/app/ui/dashboard/revenue-chart';
+import LatestInvoices from '@/app/ui/dashboard/latest-invoices';
+import { lusitana } from '@/app/ui/fonts';
+import {
+  fetchRevenue,
+  fetchLatestInvoices,
+  fetchCardData,
+} from '@/app/lib/data';
+ 
+export default async function Page() {
+  const revenue = await fetchRevenue();
+  const latestInvoices = await fetchLatestInvoices();
+  const {
+    numberOfInvoices,
+    numberOfCustomers,
+    totalPaidInvoices,
+    totalPendingInvoices,
+  } = await fetchCardData();
+ 
+  return (
+    <main>
+      <h1 className={`${lusitana.className} mb-4 text-xl md:text-2xl`}>
+        Dashboard
+      </h1>
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <Card title="Collected" value={totalPaidInvoices} type="collected" />
+        <Card title="Pending" value={totalPendingInvoices} type="pending" />
+        <Card title="Total Invoices" value={numberOfInvoices} type="invoices" />
+        <Card
+          title="Total Customers"
+          value={numberOfCustomers}
+          type="customers"
+        />
+      </div>
+      <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-4 lg:grid-cols-8">
+        <RevenueChart revenue={revenue} />
+        <LatestInvoices latestInvoices={latestInvoices} />
+      </div>
+    </main>
+  );
+}
+```
+
+¡Excelente! Ahora ha obtenido todos los datos para la página de descripción general del panel. Tu página debería verse así:
+
+![Página principal del panel con sus gráficos](https://nextjs.org/_next/image?url=%2Flearn%2Fdark%2Fcomplete-dashboard.png&w=1080&q=75&dpl=dpl_3KvQ7chUpCwD5geTFxau9SMj51uW)
+
+Sin embargo... hay dos cosas que debes tener en cuenta:
+
+Las solicitudes de datos se bloquean entre sí sin querer, creando una **cascada de solicitudes**.
+De forma predeterminada, Next.js prerenderiza rutas para mejorar el rendimiento, esto se denomina renderizado estático. Entonces, si sus datos cambian, no se reflejarán en su panel.
+
+Analicemos el número 1 en este capítulo y luego analicemos en detalle el número 2 en el siguiente capítulo.
+
+- **¿Qué son las cascadas de solicitudes?**
+
+Una "cascada" se refiere a una secuencia de solicitudes de red que dependen de la finalización de solicitudes anteriores. En el caso de la recuperación de datos, cada solicitud solo puede comenzar una vez que la solicitud anterior haya devuelto los datos.
+
+![Representación gráfica de las diferencias entre solicitudes Secuenciales y Paralelas](https://nextjs.org/_next/image?url=%2Flearn%2Fdark%2Fsequential-parallel-data-fetching.png&w=1920&q=75&dpl=dpl_3KvQ7chUpCwD5geTFxau9SMj51uW)
+
+Por ejemplo, debemos esperar a que se ejecute `fetchRevenue()` antes de que `fetchLatestInvoices()` pueda comenzar a ejecutarse, y así sucesivamente.
+
+Este patrón no es necesariamente malo. Puede haber casos en los que desee cascadas porque desea que se cumpla una condición antes de realizar la siguiente solicitud. Por ejemplo, es posible que desee obtener primero el ID de un usuario y la información del perfil. Una vez que tengas la identificación, puedes proceder a buscar su lista de amigos. En este caso, cada solicitud depende de los datos devueltos por la solicitud anterior.
+
+Sin embargo, este comportamiento puedo no ser necesario y afectar el rendimiento.
+
+### Obtención de datos en paralelo
+
+Una forma común de evitar cascadas es iniciar todas las solicitudes de datos al mismo tiempo, en paralelo.
+
+En JavaScript, puede utilizar las funciones `Promise.all()` o `Promise.allSettled()` para iniciar todas las promesas al mismo tiempo. Por ejemplo, en `data.ts`, usamos `Promise.all()` en la función `fetchCardData()`:
+
+```tsx
+export async function fetchCardData() {
+  try {
+    const invoiceCountPromise = sql`SELECT COUNT(*) FROM invoices`;
+    const customerCountPromise = sql`SELECT COUNT(*) FROM customers`;
+    const invoiceStatusPromise = sql`SELECT
+         SUM(CASE WHEN status = 'paid' THEN amount ELSE 0 END) AS "paid",
+         SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END) AS "pending"
+         FROM invoices`;
+ 
+    const data = await Promise.all([
+      invoiceCountPromise,
+      customerCountPromise,
+      invoiceStatusPromise,
+    ]);
+    // ...
+  }
+}
+```
+
+> Con Promise.allSettled(), también puede devolver una matriz de objetos con claves de estado y valor, de modo que pueda verificar que el estado de una promesa se cumpla o se rechace antes de pasar el valor a su componente. Es útil si desea manejar los errores con mayor elegancia.
+
+Al usar este patrón, puedes:
+
+Comenzar a ejecutar todas las recuperaciones de datos al mismo tiempo, lo que puede generar mejoras en el rendimiento.
+
+Sin embargo, existe una desventaja al utilizar este patrón de JavaScript: ¿qué sucede si una solicitud de datos es más lenta que todas las demás?
+
