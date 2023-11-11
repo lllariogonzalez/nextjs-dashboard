@@ -18,7 +18,7 @@ A continuación se ofrece una descripción general de las funciones que aprender
 
 - [**Estilo:**](#estilo-css) las diferentes formas de diseñar su aplicación en Next.js.
 - [**Optimizaciones:**](#optimización-de-fuentes-e-imágenes) cómo optimizar imágenes, enlaces y fuentes.
-- [**Enrutamiento:**] cómo crear diseños y páginas anidados utilizando el enrutamiento del sistema de archivos.
+- [**Enrutamiento:**](#crear-diseños-y-páginas) cómo crear diseños y páginas anidados utilizando el enrutamiento del sistema de archivos.
 - [**Obtención de datos:**] cómo configurar una base de datos en Vercel y mejores prácticas para la obtención y transmisión por secuencias.
 - [**Renderizado estatico y dinámico:**] qué es el renderizado estático y cómo puede mejorar el rendimiento de su aplicación y qué es el renderizado dinámico y como usarlo.
 - [**Streaming**] qué es el streaming y cuándo puedes utilizarlo con loading, Suspense y esqueletos de carga.
@@ -424,4 +424,170 @@ Hay mucho más que aprender sobre estos temas, incluida la optimización de imá
 - [Font Optimization Docs](https://nextjs.org/docs/app/building-your-application/optimizing/fonts)
 - [Improving Web Performance with Images (MDN)](https://developer.mozilla.org/en-US/docs/Learn/Performance/Multimedia)
 - [Web Fonts (MDN)](https://developer.mozilla.org/en-US/docs/Learn/CSS/Styling_text/Web_fonts)
+
+---
+
+## Crear diseños y páginas
+
+Hasta el momento, tu aplicación sólo tiene una página de inicio. Aprendamos cómo puede crear más rutas con diseños y páginas.
+
+Estos son los temas y acciones que cubriremos:
+
+- Crear las rutas del panel utilizando el enrutamiento del sistema de archivos.
+
+- Comprender la función de las carpetas y archivos al crear nuevos segmentos de ruta.
+
+- Crear un diseño anidado que se pueda compartir entre varias páginas del panel.
+
+- Comprender qué son la colocación, el renderizado parcial y el diseño raíz - Root Layout.
+
+### Enrutamiento anidado
+
+Next.js utiliza enrutamiento del sistema de archivos donde se usan carpetas para crear rutas anidadas. Cada carpeta representa un segmento de ruta que se asigna a un segmento de URL.
+
+![Enrutamiento anidado](https://nextjs.org/_next/image?url=%2Flearn%2Fdark%2Ffolders-to-url-segments.png&w=1920&q=75&dpl=dpl_Ejtt9BCyCFNeRJdBoVsM9Es9x8xe)
+
+Puede crear interfaces de usuario independientes para cada ruta utilizando los archivos `layout.tsx` y `page.tsx`.
+
+`page.tsx` es un archivo Next.js especial que exporta un componente de **React** y es necesario para que la ruta sea accesible. En su aplicación, ya tiene un archivo de página: **/app/page.tsx**: esta es la página de inicio asociada con la ruta **/.** la página principal de la app.
+
+Para crear una ruta anidada, puede anidar carpetas una dentro de otra y agregar archivos page.tsx dentro de ellas. Por ejemplo:
+
+![Creación de una ruta anidada](https://nextjs.org/_next/image?url=%2Flearn%2Fdark%2Fdashboard-route.png&w=1920&q=75&dpl=dpl_Ejtt9BCyCFNeRJdBoVsM9Es9x8xe)
+
+### Creando la página del dashboard
+
+Cree una nueva carpeta llamada dashboard dentro de **/app.** Luego, cree un nuevo archivo `page.tsx` dentro de la carpeta del panel con el siguiente contenido:
+> /app/dashboard/page.tsx
+```tsx
+export default function Page() {
+  return <p>Dashboard Page</p>;
+}
+```
+
+- Práctica: **Crear las páginas del panel**
+
+**Página de clientes:** se debe poder acceder a la página en http://localhost:3000/dashboard/customers. Por ahora, debería devolver un elemento `<p>Página de clientes</p>`.
+
+**Página de facturas:** se debe poder acceder a la página de facturas en http://localhost:3000/dashboard/invoices. Por ahora, también devuelve un elemento `<p>Página de facturas</p>`.
+
+Deberías tener la siguiente estructura de carpetas:
+
+![Estructura de carpetas](https://nextjs.org/_next/image?url=%2Flearn%2Fdark%2Frouting-solution.png&w=1920&q=75&dpl=dpl_Ejtt9BCyCFNeRJdBoVsM9Es9x8xe)
+
+### Creando el diseño del dashboard
+
+Los paneles tienen algún tipo de navegación que se comparte en varias páginas. En Next.js, puede utilizar un archivo layout.tsx especial para crear una interfaz de usuario que se comparte entre varias páginas. 
+
+- ¡Creemos un diseño para las páginas del panel!: Dentro de la carpeta **/dashboard**, agregue un nuevo archivo llamado `layout.tsx` y pegue el siguiente código:
+
+    ```tsx
+    import SideNav from '@/app/ui/dashboard/sidenav';
+ 
+    export default function Layout({ children }: { children: React.ReactNode }) {
+        return (
+            <div className="flex h-screen flex-col md:flex-row md:overflow-hidden">
+            <div className="w-full flex-none md:w-64">
+                <SideNav />
+            </div>
+            <div className="flex-grow p-6 md:overflow-y-auto md:p-12">{children}</div>
+            </div>
+        );
+    }
+    ```
+
+    En este código suceden algunas cosas, así que analicémoslas:
+
+    Primero, está importando el componente \<SideNav /\> a su diseño. Cualquier componente que importe a este archivo formará parte del diseño.
+
+    El componente \<Layout /\> recibe propiedades `{children}`. Este hijo puede ser una página u otro diseño. En su caso, las páginas dentro de /dashboard se anidarán automáticamente dentro del \<Layout /\> así:
+
+    ![Ejemplo de anidamiento del diseño](https://nextjs.org/_next/image?url=%2Flearn%2Fdark%2Fshared-layout.png&w=1920&q=75&dpl=dpl_Ejtt9BCyCFNeRJdBoVsM9Es9x8xe)
+
+
+    Un beneficio de usar diseños en Next.js es que durante la navegación, solo se actualizan los componentes de la página, mientras que el diseño no se vuelve a representar. Esto se llama **renderizado parcial**:
+
+    ![Renderizado parcial o Patial rendering](https://nextjs.org/_next/image?url=%2Flearn%2Fdark%2Fpartial-rendering-dashboard.png&w=1920&q=75&dpl=dpl_Ejtt9BCyCFNeRJdBoVsM9Es9x8xe)
+
+
+### Diseño Raiz ./app/layout.tsx
+
+Esto se llama diseño raíz y es obligatorio. Cualquier interfaz de usuario que agregue al diseño raíz se compartirá en todas las páginas de su aplicación. Puede utilizar el diseño raíz para modificar sus etiquetas \<html\> y \<body\> y agregar **metadatos** (aprenderá más sobre los metadatos en un capítulo posterior).
+
+Dado que el nuevo diseño que acaba de crear `/app/dashboard/layout.tsx` es exclusivo de las páginas del panel, no necesita agregar ninguna interfaz de usuario al diseño raíz anterior.
+
+
+### Navegando entre páginas
+
+En el capítulo anterior, creó el diseño y las páginas del panel. Ahora, agreguemos algunos enlaces para permitir a los usuarios navegar entre las rutas del panel.
+
+- **¿Por qué optimizar la navegación?**
+
+Para vincular páginas, tradicionalmente se utiliza el elemento HTML \<a\>. Por el momento, los enlaces de la barra lateral utilizan elementos \<a\>, pero observe lo que sucede cuando navega entre las páginas de inicio, facturas y clientes en su navegador. ¿Lo viste? ¡Hay una actualización de página completa en cada navegación de página!
+
+- **Cómo utilizar el componente** `next/link`.
+
+En Next.js, puede utilizar el componente \<Link /\> para vincular páginas en su aplicación. \<Link\> le permite realizar navegación del lado del cliente con JavaScript.
+
+Para usar el componente \<Link /\>, abra `/app/ui/dashboard/nav-links.tsx` e importe el componente Link desde next/link. Luego reemplace la etiqueta \<a\> con \<Link\>.
+
+Guarde sus cambios y verifique si funciona en su host local. Ahora debería poder navegar entre las páginas sin ver una actualización completa. Aunque partes de su aplicación se procesan en el servidor, no se actualiza la página completa, lo que la hace sentir como una aplicación web.
+
+- **Cómo funciona la navegación en Next.js**
+
+**División automática de código y captación previa - Code-Splitting and Prefetching**
+
+Para mejorar la experiencia de navegación, el código de Next.js divide automáticamente su aplicación por segmentos de ruta. Esto es diferente de un React SPA tradicional, donde el navegador carga todo el código de su aplicación en la carga inicial.
+
+Dividir el código por rutas significa que las páginas quedan aisladas. Si una determinada página arroja un error, el resto de la aplicación seguirá funcionando.
+
+Además, en producción, cada vez que aparecen componentes \<Link\> en la ventana gráfica del navegador, Next.js busca automáticamente el código para la ruta vinculada en segundo plano. Cuando el usuario hace clic en el enlace, el código de la página de destino ya estará cargado en segundo plano, ¡y esto es lo que hace que la transición de la página sea casi instantánea!
+
+- **Cómo mostrar un enlace activo con el gancho usePathname()**
+
+Un patrón de interfaz de usuario común es mostrar un enlace activo para indicar al usuario en qué página se encuentra actualmente. Para hacer esto, necesita obtener la ruta actual del usuario desde la URL. Next.js proporciona un gancho llamado `usePathname()` que puede usar para verificar la ruta e implementar este patrón.
+
+Dado que `usePathname()` es un enlace, deberá convertir `nav-links.tsx` en un componente de cliente. Agregue la directiva `"usar cliente"` de React al principio del archivo, luego importe `usePathname()` desde `next/navigation` y a continuación, asigne la ruta a una variable llamada nombre de ruta dentro de su componente `<NavLinks />`, por ultimo utilice la librería clsx para aplicar condicionalmente clases y darle estilo, cuando `link.href` coincide con el nombre de la ruta, el enlace debería mostrarse con texto azul y un fondo azul claro:
+
+```tsx
+'use client';
+ 
+import {
+  UserGroupIcon,
+  HomeIcon,
+  DocumentDuplicateIcon,
+} from '@heroicons/react/24/outline';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import clsx from 'clsx';
+ 
+// ...
+ 
+export default function NavLinks() {
+  const pathname = usePathname();
+ 
+  return (
+    <>
+      {links.map((link) => {
+        const LinkIcon = link.icon;
+        return (
+          <Link
+            key={link.name}
+            href={link.href}
+            className={clsx(
+              'flex h-[48px] grow items-center justify-center gap-2 rounded-md bg-gray-50 p-3 text-sm font-medium hover:bg-sky-100 hover:text-blue-600 md:flex-none md:justify-start md:p-2 md:px-3',
+              {
+                'bg-sky-100 text-blue-600': pathname === link.href,
+              },
+            )}
+          >
+            <LinkIcon className="w-6" />
+            <p className="hidden md:block">{link.name}</p>
+          </Link>
+        );
+      })}
+    </>
+  );
+}
+```
 
