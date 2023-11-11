@@ -27,7 +27,7 @@ A continuación se ofrece una descripción general de las funciones que aprender
 - [**Manejo de errores:**](#manejo-de-errores) cómo manejar errores generales y 404 no encontrados.
 - [**Validación y accesibilidad de formularios:**](#mejora-de-la-accesibilidad) cómo realizar la validación de formularios del lado del servidor y consejos para mejorar la accesibilidad.
 - [**Autenticación:**](#agregar-autenticación) cómo agregar autenticación a su aplicación usando NextAuth.js y Middleware.
-- [**Metadatos:**] cómo agregar metadatos y preparar su aplicación para compartir en redes sociales.
+- [**Metadatos:**](#agregar-metadatos) cómo agregar metadatos y preparar su aplicación para compartir en redes sociales.
 
 > ⚠️ Nota ⚠️
 >
@@ -3476,4 +3476,121 @@ Ahora, pruébalo. Debería poder iniciar sesión y salir de su aplicación utili
 
 - **Email:** *user@nextmail.com*
 - **Password:** *123456*
+
+---
+
+## Agregar Metadatos
+
+Los metadatos son cruciales para SEO y la habilidad de compartir. En este capítulo, discutiremos cómo puede agregar metadatos a su aplicación Next.js.
+
+### ¿Qué son los metadatos?
+
+En el desarrollo web, los metadatos proporcionan detalles adicionales sobre una página web. Los metadatos no son visibles para los usuarios que visitan la página. En cambio, funciona detrás de escena, incrustado dentro del HTML de la página, generalmente dentro del elemento `<head>`. Esta información oculta es crucial para los motores de búsqueda y otros sistemas que necesitan comprender mejor el contenido de su página web.
+
+### ¿Por qué es importante los metadatos?
+
+Los metadatos juegan un papel importante en la mejora del SEO de una página web, lo que lo hace más accesible y comprensible para los motores de búsqueda y las plataformas de redes sociales. Los metadatos adecuados ayudan a los motores de búsqueda a indexar de manera efectiva las páginas web, mejorando su clasificación en los resultados de búsqueda. Además, los metadatos como el og - `Open Graph` mejora la apariencia de enlaces compartidos en las redes sociales, lo que hace que el contenido sea más atractivo e informativo para los usuarios.
+
+### Agregar metadatos
+
+Next.js tiene una API de metadatos que se puede usar para definir los metadatos de su aplicación.Hay dos formas en que puede agregar metadatos a su aplicación:
+
+1. Basado en la configuración: exporte un objeto de metadatos estáticos o una función dinámica `generateMetadata` en un archivo `layout` o `page`.
+
+2. Basado en archivos: Next.js tiene un rango de archivos especiales se reconocen específicamente para fines de metadatos:
+
+- **favicon.ico**, **apple-icon.jpg** e **icon.jpg**: utilizado para favicons e iconos.
+- **opengraph-image.jpg** y **twitter-image.jpg**: empleado para imágenes de redes sociales.
+- **robots.txt:** proporciona instrucciones para el rastreo de motores de búsqueda.
+- **sitemap.xml:** ofrece información sobre la estructura del sitio web.
+
+Tiene la flexibilidad de usar estos archivos para metadatos estáticos, o puede generarlos programáticamente dentro de su proyecto.
+
+Con ambas opciones, Next.js generará automáticamente los elementos `<head>` relevantes para sus páginas.
+
+### Favicon and Open Graph image
+
+En su carpeta `/public`, notará que tiene dos imágenes: `favicon.ico` y `opengraph-image.jpg`.
+
+Mueva estas imágenes a la raíz de su carpeta ``/app``.
+
+Después de hacer esto, Next.js identificará y usará automáticamente estos archivos como su imagen favicon y OG. Puede verificar esto verificando el elemento `<head>` de su aplicación en herramientas de desarrollo.
+
+> Bueno saber: también puede crear imágenes dinámicas de OG utilizando el [ImageResponse](https://nextjs.org/docs/app/api-reference/functions/image-response) constructor.
+
+### Título y descripciones de la página
+
+También puede incluir un objeto de metadatos de cualquier archivo de layout.js or page.js para agregar información de página adicional como título y descripción. Cualquier metadato en layout.js será heredado por todas las páginas que lo usen.
+
+En su diseño de raíz, cree un nuevo objeto de metadatos con los siguientes campos:
+
+```tsx
+import { Metadata } from 'next';
+ 
+export const metadata: Metadata = {
+  title: 'Acme Dashboard',
+  description: 'The official Next.js Course Dashboard, built with App Router.',
+  metadataBase: new URL('https://next-learn-dashboard.vercel.sh'),
+};
+ 
+export default function Page() {
+  // ...
+}
+```
+
+Next.js agregará automáticamente el título y los metadatos a su aplicación.
+
+Pero, ¿qué pasa si desea agregar un título personalizado para una página específica? Puede hacerlo agregando un objeto de metadatos a la página misma. Los metadatos en las páginas anidados anularán los metadatos en el padre.
+
+Por ejemplo, en la página **/dashboard/invoices**, puede agregar el título de la página:
+
+```tsx
+import { Metadata } from 'next';
+ 
+export const metadata: Metadata = {
+  title: 'Invoices | Acme Dashboard',
+};
+```
+
+Esto está bien, pero no es muy **DRY** (*Dont repeat yourself*). Está repitiendo el título de la aplicación en cada página, y si algo cambió, como el nombre de la compañía, tendría que actualizarlo en cada página.
+
+En su lugar, puede usar el campo title.template en el objeto de metadatos para definir una plantilla para los títulos de su página. Esta plantilla puede incluir el título de la página y cualquier otra información que desee incluir.
+
+En su diseño de raíz, actualice el objeto de metadatos para incluir una plantilla:
+
+>/app/layout.tsx
+```tsx
+import { Metadata } from 'next';
+ 
+export const metadata: Metadata = {
+  title: {
+    template: '%s | Acme Dashboard',
+    default: 'Acme Dashboard',
+  },
+  description: 'The official Next.js Learn Dashboard built with App Router.',
+  metadataBase: new URL('https://next-learn-dashboard.vercel.sh'),
+};
+```
+
+El %s en la plantilla se reemplazará con el título de página específico.
+
+Ahora, en su página de `/dashboard/invoices` puede agregar el título de la página:
+
+```tsx
+export const metadata: Metadata = {
+  title: 'Invoices',
+};
+```
+
+### Práctica: agregar metadatos
+
+Ahora que ha aprendido sobre los metadatos, practique agregando títulos a sus otras páginas:
+
+1. /login page.
+2. /dashboard/ page.
+3. /dashboard/customers page.
+4. /dashboard/invoices/create page.
+5. /dashboard/invoices/[id]/edit page.
+
+La API de metadatos Next.JS es potente y flexible, lo que le brinda control total sobre los metadatos de su aplicación. Aquí, le hemos mostrado cómo agregar algunos metadatos básicos, pero puede agregar múltiples campos, incluidas palabras `keywords, robots, canonical `y más. Siéntase libre de explorar la documentación y agregar cualquier metadato adicional que desee a su aplicación.
 
