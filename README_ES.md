@@ -1336,3 +1336,67 @@ Los componentes de servidor y streaming nos brindan nuevas formas de manejar los
 
 En el siguiente capítulo, aprenderá sobre la renderización previa parcial, una nueva optimización del compilador Next.js creada teniendo en cuenta el streaming en función de los límites de Suspense.
 
+---
+
+## Prerenderizado parcial (opcional)
+
+El renderizado previo parcial es un nuevo modelo de renderizado experimental creado con streaming.
+
+La renderización previa parcial es una función experimental introducida en Next.js 14. El contenido de esta página puede actualizarse a medida que la función avanza en estabilidad. Es posible que desee omitir este capítulo si prefiere no utilizar funciones experimentales. Este capítulo no es necesario para completar el curso.
+
+- **Combinando contenido estático y dinámico**
+
+Actualmente, si llamas a una función dinámica dentro de tu ruta (por ejemplo, noStore(), cookies(), etc.), toda tu ruta se vuelve dinámica.
+
+Esto se alinea con la forma en que se crean la mayoría de las aplicaciones web hoy en día: puede elegir entre renderizado estático y dinámico para toda su aplicación o para rutas específicas.
+
+Sin embargo, la mayoría de las rutas no son completamente estáticas ni dinámicas. Es posible que tenga una ruta que tenga contenido tanto estático como dinámico. Por ejemplo, digamos que tienes un feed de redes sociales, las publicaciones serían estáticas, pero los "me gusta" de la publicación serían dinámicos. O un sitio de comercio electrónico, donde los detalles del producto son estáticos, pero el carrito del usuario es dinámico.
+
+Volviendo a la página de su panel de control, ¿qué componentes consideraría estáticos o dinámicos?
+
+Una vez que esté listo, haga clic en el botón a continuación para ver cómo dividiríamos la ruta del panel:
+
+![Static vs Dynamic components](https://nextjs.org/_next/image?url=%2Flearn%2Fdark%2Fdashboard-static-dynamic-components.png&w=1920&q=75&dpl=dpl_33tRNU8h1QxqRd68eMgcXZRVx7K2)
+
+- **¿Qué es el renderizado previo parcial?**
+
+En Next.js 14, hay una vista previa de una nueva optimización del compilador llamada Partial Prerendering. La renderización previa parcial es una característica experimental que le permite renderizar una ruta con un shell de carga estático, manteniendo algunas partes dinámicas. En otras palabras, puedes aislar las partes dinámicas de una ruta. Por ejemplo:
+
+![Ejemplo de Partial prerendering](https://nextjs.org/_next/image?url=%2Flearn%2Fdark%2Fthinking-in-ppr.png&w=1920&q=75&dpl=dpl_33tRNU8h1QxqRd68eMgcXZRVx7K2)
+
+Cuando un usuario visita una ruta se sirve un shell de ruta estática, lo que hace que la carga inicial sea rápida.
+
+El shell deja huecos donde el contenido dinámico se cargará de forma asíncrona.
+Los agujeros asíncronos se cargan en paralelo, lo que reduce el tiempo de carga general de la página.
+Esto es diferente de cómo se comporta su aplicación hoy en día, donde rutas enteras son completamente estáticas o dinámicas.
+
+La representación previa parcial combina la entrega estática ultrarrápida con capacidades totalmente dinámicas y creemos que tiene el potencial de convertirse en el modelo de representación predeterminado para aplicaciones web, reuniendo lo mejor de la generación de sitios estáticos y la entrega dinámica.
+
+- **¿Cómo funciona el prerenderizado parcial?**
+
+La renderización previa parcial aprovecha las API simultáneas de React y utiliza Suspense para diferir la renderización de partes de su aplicación hasta que se cumpla alguna condición (por ejemplo, se cargan los datos).
+
+El respaldo está incrustado en el archivo estático inicial junto con otro contenido estático. En el momento de la construcción (o durante la revalidación), las partes estáticas de la ruta se prerenderizan y el resto se pospone hasta que el usuario solicita la ruta.
+
+Vale la pena señalar que envolver un componente en Suspense no hace que el componente en sí sea dinámico (recuerde que usó unstable_noStore para lograr este comportamiento), sino que Suspense se usa como un límite entre las partes estáticas y dinámicas de su ruta.
+
+Lo mejor de la renderización previa parcial es que no es necesario cambiar el código para utilizarla. Siempre que utilice Suspense para ajustar las partes dinámicas de su ruta, Next.js sabrá qué partes de su ruta son estáticas y cuáles son dinámicas.
+
+### **Resumen**
+
+En resumen, ha hecho algunas cosas para optimizar la obtención de datos en su aplicación:
+
+- Creó una base de datos en la misma región que el código de su aplicación para reducir la latencia entre su servidor y la base de datos.
+
+- Datos obtenidos en el servidor con React Server Components. Esto le permite mantener costosas recuperaciones de datos y lógica en el servidor, reduce el paquete de JavaScript del lado del cliente y evita que los secretos de su base de datos queden expuestos al cliente.
+
+- Usó SQL para recuperar solo los datos que necesitaba, reduciendo la cantidad de datos transferidos para cada solicitud y la cantidad de JavaScript necesaria para transformar los datos en memoria.
+
+- Paralelizó la obtención de datos con JavaScript, cuando tenía sentido hacerlo.
+
+- Se implementó Streaming para evitar que las solicitudes de datos lentas bloqueen toda la página y para permitir que el usuario comience a interactuar con la interfaz de usuario sin esperar a que se cargue todo.
+
+- Se movió la recuperación de datos a los componentes que los necesitan, aislando así qué partes de sus rutas deben ser dinámicas en preparación para la renderización previa parcial.
+
+> En el próximo capítulo, veremos dos patrones comunes que quizás necesites implementar al recuperar datos: búsqueda y paginación.
+
