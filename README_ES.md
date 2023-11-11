@@ -22,7 +22,7 @@ A continuación se ofrece una descripción general de las funciones que aprender
 - [**Obtención de datos:**](#configurando-su-base-de-datos) cómo configurar una base de datos en Vercel y mejores prácticas para la obtención y transmisión por secuencias.
 - [**Renderizado estatico y dinámico:**](#representación-estática-y-dinámica) qué es el renderizado estático y cómo puede mejorar el rendimiento de su aplicación y qué es el renderizado dinámico y como usarlo.
 - [**Streaming**](#streaming) qué es el streaming y cuándo puedes utilizarlo con loading, Suspense y esqueletos de carga.
-- [**Búsqueda y paginación:**] cómo implementar la búsqueda y paginación utilizando parámetros de búsqueda de URL.
+- [**Búsqueda y paginación:**](#agregar-búsqueda-y-paginación) cómo implementar la búsqueda y paginación utilizando parámetros de búsqueda de URL.
 - [**Mutación de datos:**] cómo mutar datos usando React Server Actions y revalidar el caché de Next.js.
 - [**Manejo de errores:**] cómo manejar errores generales y 404 no encontrados.
 - [**Validación y accesibilidad de formularios:**] cómo realizar la validación de formularios del lado del servidor y consejos para mejorar la accesibilidad.
@@ -1399,4 +1399,541 @@ En resumen, ha hecho algunas cosas para optimizar la obtención de datos en su a
 - Se movió la recuperación de datos a los componentes que los necesitan, aislando así qué partes de sus rutas deben ser dinámicas en preparación para la renderización previa parcial.
 
 > En el próximo capítulo, veremos dos patrones comunes que quizás necesites implementar al recuperar datos: búsqueda y paginación.
+
+---
+
+## Agregar búsqueda y paginación
+
+En el capítulo anterior, mejoró el rendimiento de carga inicial de su panel con la transmisión. Ahora pasemos a la página /invoices y aprendamos cómo agregar búsqueda y paginación.
+
+Estos son los temas que cubriremos
+
+- Aprenda a utilizar las API de Next.js: searchParams, usePathname y useRouter.
+
+- Implemente búsqueda y paginación utilizando parámetros de búsqueda de URL.
+
+Dentro de su archivo `/dashboard/invoices/page.tsx`, pegue el siguiente código:
+
+```tsx
+import Pagination from '@/app/ui/invoices/pagination';
+import Search from '@/app/ui/search';
+import Table from '@/app/ui/invoices/table';
+import { CreateInvoice } from '@/app/ui/invoices/buttons';
+import { lusitana } from '@/app/ui/fonts';
+import { InvoicesTableSkeleton } from '@/app/ui/skeletons';
+import { Suspense } from 'react';
+ 
+export default async function Page() {
+  return (
+    <div className="w-full">
+      <div className="flex w-full items-center justify-between">
+        <h1 className={`${lusitana.className} text-2xl`}>Invoices</h1>
+      </div>
+      <div className="mt-4 flex items-center justify-between gap-2 md:mt-8">
+        <Search placeholder="Search invoices..." />
+        <CreateInvoice />
+      </div>
+      {/*  <Suspense key={query + currentPage} fallback={<InvoicesTableSkeleton />}>
+        <Table query={query} currentPage={currentPage} />
+      </Suspense> */}
+      <div className="mt-5 flex w-full justify-center">
+        {/* <Pagination totalPages={totalPages} /> */}
+      </div>
+    </div>
+  );
+}
+```
+
+Dedique algún tiempo a familiarizarse con la página y los componentes con los que trabajará:
+
+`<Search/>` permite a los usuarios buscar facturas específicas.
+`<Pagination/>` permite a los usuarios navegar entre páginas de facturas.
+`<Table/> `muestra las facturas.
+
+Su funcionalidad de búsqueda abarcará el cliente y el servidor. Cuando un usuario busca una factura en el cliente, los parámetros de URL se actualizarán, los datos se recuperarán en el servidor y la tabla se volverá a representar en el servidor con los nuevos datos.
+
+### ¿Por qué utilizar parámetros de búsqueda de URL?
+
+Como se mencionó anteriormente, utilizará parámetros de búsqueda de URL para administrar el estado de búsqueda. Este patrón puede ser nuevo si está acostumbrado a hacerlo con el estado del lado del cliente.
+
+Hay un par de beneficios al implementar la búsqueda con parámetros de URL:
+
+- URL que se pueden marcar y compartir: dado que los parámetros de búsqueda están en la URL, los usuarios pueden marcar el estado actual de la aplicación, incluidas sus consultas y filtros de búsqueda, para consultarlos o compartirlos en el futuro.
+
+- Representación del lado del servidor y carga inicial: los parámetros de URL se pueden consumir directamente en el servidor para representar el estado inicial, lo que facilita el manejo de la representación del servidor.
+
+- Análisis y seguimiento: tener consultas de búsqueda y filtros directamente en la URL facilita el seguimiento del comportamiento del usuario sin requerir lógica adicional del lado del cliente.
+
+### Agregar la funcionalidad de búsqueda
+
+Hay tres *hooks* del lado cliente que Next.js utilizará para implementar la funcionalidad de búsqueda:
+
+- **useSearchParams:** le permite acceder a los parámetros de la URL actual. Por ejemplo, los parámetros de búsqueda para esta URL /dashboard/invoices?page=1&query=pending se verían así: `{página: '1', consulta: 'pendiente'}`
+
+- **usePathname:** le permite leer el nombre de ruta de la URL actual. Por ejemplo, la ruta **/dashboard/invoices**, usePathname devolvería `'/dashboard/invoices'`.
+
+- **useRouter:** permite la navegación entre rutas dentro de los componentes del cliente mediante programación. Hay varios métodos que puedes utilizar.
+
+> A continuación se ofrece una descripción general rápida de los pasos de implementación:
+
+1. Capture la entrada del usuario.
+  - Vaya al componente `<Search>` **(/app/ui/search.tsx)** y notará:
+
+    `"use client"`: este es un componente de cliente, lo que significa que puede utilizar detectores de eventos y *hooks*.
+
+    `<input>:` esta es la entrada de búsqueda.
+
+  - Cree una nueva función `handleSearch` y agregue un detector *onChange* al elemento `<input>`.
+  onChange invocará handleSearch cada vez que cambie el valor de entrada.
+
+    ```tsx
+      'use client';
+  
+      import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+      
+      export default function Search({ placeholder }: { placeholder: string }) {
+        function handleSearch(term: string) {
+          console.log(term);
+        }
+      
+        return (
+          <div className="relative flex flex-1 flex-shrink-0">
+            <label htmlFor="search" className="sr-only">
+              Search
+            </label>
+            <input
+              className="peer block w-full rounded-md border border-gray-200 py-[9px] pl-10 text-sm outline-2 placeholder:text-gray-500"
+              placeholder={placeholder}
+              onChange={(e) => {
+                handleSearch(e.target.value);
+              }}
+            />
+            <MagnifyingGlassIcon className="absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-500 peer-focus:text-gray-900" />
+          </div>
+        );
+      }
+      ```
+
+      Pruebe que esté funcionando correctamente abriendo la consola en sus Herramientas de desarrollador, luego escriba en el campo de búsqueda. Debería ver el término de búsqueda registrado en la consola.
+
+¡Excelente! Estás capturando la entrada de búsqueda del usuario. Ahora necesitas actualizar la URL con el término de búsqueda.
+
+2. Actualice la URL con los parámetros de búsqueda.
+
+2. Actualiza la URL con los parámetros de búsqueda.
+
+  - Importe el gancho `useSearchParams` desde `'next/navigation'` y asígnelo a una variable:
+
+      ```tsx
+      'use client';
+      
+      import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+      import { useSearchParams } from 'next/navigation';
+      
+      export default function Search() {
+        const searchParams = useSearchParams();
+      
+        function handleSearch(term: string) {
+          console.log(term);
+        }
+        // ...
+      }
+      ```
+  - Dentro de `handleSearch`, cree una nueva instancia de `URLSearchParams` usando su nueva variable **searchParams**.
+
+      ```tsx
+      'use client';
+
+      import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+      import { useSearchParams } from 'next/navigation';
+      
+      export default function Search() {
+        const searchParams = useSearchParams();
+      
+        function handleSearch(term: string) {
+          const params = new URLSearchParams(searchParams);
+        }
+        // ...
+      }
+      ```
+
+      `URLSearchParams` es una API web que proporciona métodos de utilidad para manipular los parámetros de consulta de URL. En lugar de crear un literal de cadena complejo, puede usarlo para obtener la cadena de parámetros como `?page=1&query=a`.
+
+  - A continuación, configure la cadena de parámetros según la entrada del usuario. Si la entrada está vacía, desea eliminarla:
+
+        ```tsx
+        'use client';
+      
+        import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+        import { useSearchParams } from 'next/navigation';
+        
+        export default function Search() {
+          const searchParams = useSearchParams();
+        
+          function handleSearch(term: string) {
+            const params = new URLSearchParams(searchParams);
+            if (term) {
+              params.set('query', term);
+            } else {
+              params.delete('query');
+            }
+          }
+          // ...
+        }
+      ```
+
+    Ahora que tiene la cadena de consulta. Puede utilizar los ganchos `useRouter` y `usePathname` de Next.js para actualizar la URL.
+
+  - Importe `useRouter` y `usePathname` desde `'next/navigation'`, y use el método `replace` desde `userRouter()` dentro de **handleSearch**:
+
+        ```tsx
+        'use client';
+
+        import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+        import { useSearchParams, usePathname, useRouter } from 'next/navigation';
+        
+        export default function Search() {
+          const searchParams = useSearchParams();
+          const pathname = usePathname();
+          const { replace } = useRouter();
+        
+          function handleSearch(term: string) {
+            const params = new URLSearchParams(searchParams);
+            if (term) {
+              params.set('query', term);
+            } else {
+              params.delete('query');
+            }
+            replace(`${pathname}?${params.toString()}`);
+          }
+        }
+        ```
+    
+    Aquí hay un desglose de lo que está sucediendo:
+
+    - `${pathname}` es la ruta actual, en su caso, **"/dashboard/invoices"**.
+    - A medida que el usuario escribe en la barra de búsqueda, `params.toString()` traduce esta entrada a un formato compatible con URL.
+    - El `replace(${pathname}?${params.toString()})`; El comando actualiza la URL con los datos de búsqueda del usuario. Por ejemplo, **/dashboard/invoices?query=lee** si el usuario busca "lee".
+    - La URL se actualiza sin recargar la página, gracias a la navegación del lado del cliente de Next.js (que aprendió en el capítulo sobre navegación entre páginas).
+
+3. Mantenga la URL sincronizada con el campo de entrada.
+
+  - Para garantizar que el campo de entrada esté sincronizado con la URL y se complete al compartir, puede pasar un valor predeterminado a la entrada leyendo en **searchParams**:
+
+    ```tsx
+    <input
+      className="peer block w-full rounded-md border border-gray-200 py-[9px] pl-10 text-sm outline-2 placeholder:text-gray-500"
+      placeholder={placeholder}
+      onChange={(e) => {
+        handleSearch(e.target.value);
+      }}
+      defaultValue={searchParams.get('query')?.toString()}
+    />
+    ```
+
+    **defaultValue vs. Value / Controlled vs. Uncontrolled**
+
+    Si usa el estado para administrar el valor de una entrada, usará el atributo de valor para convertirlo en un componente controlado. Esto significa que React gestionaría el estado de la entrada.
+
+    Sin embargo, como no estás usando el estado, puedes usar defaultValue. Esto significa que la entrada nativa gestionará su propio estado. Esto está bien ya que está guardando la consulta de búsqueda en la URL en lugar del estado.
+
+    
+4. Actualice la tabla para reflejar la consulta de búsqueda.
+
+  - Finalmente, debe actualizar el componente de la tabla para reflejar la consulta de búsqueda. Vuelva a la página de facturas. Los componentes de la página aceptan un accesorio llamado **searchParams**, por lo que puede pasar los parámetros de URL actuales al componente `<Table>`.
+
+      ```tsx
+      import Pagination from '@/app/ui/invoices/pagination';
+      import Search from '@/app/ui/search';
+      import Table from '@/app/ui/invoices/table';
+      import { CreateInvoice } from '@/app/ui/invoices/buttons';
+      import { lusitana } from '@/app/ui/fonts';
+      import { Suspense } from 'react';
+      import { InvoicesTableSkeleton } from '@/app/ui/skeletons';
+      
+      export default async function Page({
+        searchParams,
+      }: {
+        searchParams?: {
+          query?: string;
+          page?: string;
+        };
+      }) {
+        const query = searchParams?.query || '';
+        const currentPage = Number(searchParams?.page) || 1;
+      
+        return (
+          <div className="w-full">
+            <div className="flex w-full items-center justify-between">
+              <h1 className={`${lusitana.className} text-2xl`}>Invoices</h1>
+            </div>
+            <div className="mt-4 flex items-center justify-between gap-2 md:mt-8">
+              <Search placeholder="Search invoices..." />
+              <CreateInvoice />
+            </div>
+            <Suspense key={query + currentPage} fallback={<InvoicesTableSkeleton />}>
+              <Table query={query} currentPage={currentPage} />
+            </Suspense>
+            <div className="mt-5 flex w-full justify-center">
+              {/* <Pagination totalPages={totalPages} /> */}
+            </div>
+          </div>
+        );
+      }
+      ```
+
+  - Si navega al componente `<Table>`, verá que los dos accesorios, consulta y página actual, se pasan a la función `fetchFilteredInvoices()` que devuelve las facturas que coinciden con la consulta.
+
+      ```tsx
+      // ...
+      export default async function InvoicesTable({
+        query,
+        currentPage,
+      }: {
+        query: string;
+        currentPage: number;
+      }) {
+        const invoices = await fetchFilteredInvoices(query, currentPage);
+        // ...
+      }
+      ```
+
+      Una vez implementados estos cambios, continúe y pruébelo. Si busca un término, actualizará la URL, lo que enviará una nueva solicitud al servidor, los datos se recuperarán en el servidor y solo se devolverán las facturas que coincidan con su consulta.
+
+
+  - **¿Cuándo usar el gancho useSearchParams() frente al accesorio searchParams?** Es posible que hayas notado que utilizaste dos formas diferentes de extraer parámetros de búsqueda. El uso de uno u otro depende de si estás trabajando en el cliente o en el servidor.
+
+    - ` <Search>` es un componente del cliente, por lo que utilizó el gancho `useSearchParams()` para acceder a los parámetros desde el cliente.
+
+    - `<Table>` es un componente del servidor que recupera sus propios datos, por lo que puede pasar la propiedad searchParams de la página al componente.
+
+  > Como regla general, si desea leer los parámetros del cliente, utilice el gancho `useSearchParams()` ya que esto evita tener que volver al servidor.
+
+  - **Mejores prácticas: Debouncing** ¡Felicidades! ¡Has implementado la búsqueda con Next.js! Pero hay algo que puedes hacer para optimizarlo. Dentro de su función handleSearch, agregue el siguiente console.log:
+
+        ```tsx
+        function handleSearch(term: string) {
+          console.log(`Searching... ${term}`);
+        
+          const params = new URLSearchParams(searchParams);
+          if (term) {
+            params.set('query', term);
+          } else {
+            params.delete('query');
+          }
+          replace(`${pathname}?${params.toString()}`);
+        }
+        ```
+
+    ¡Está actualizando la URL con cada pulsación de tecla y, por lo tanto, consulta su base de datos con cada pulsación de tecla! Esto no es un problema ya que nuestra aplicación es pequeña, pero imagine si su aplicación tuviera miles de usuarios, cada uno de los cuales enviara una nueva solicitud a su base de datos con cada pulsación de tecla.
+
+    El **Debouncing** es una práctica de programación que limita la velocidad a la que se puede activar una función. En nuestro caso, solo desea consultar la base de datos cuando el usuario ha dejado de escribir.
+
+    **Cómo funciona el debounce:**
+
+    - **Evento desencadenante: (Trigger event)** cuando ocurre un evento que debe ser rechazado (como una pulsación de tecla en el cuadro de búsqueda), se inicia un cronómetro.
+
+    - **Espere:** si ocurre un nuevo evento antes de que expire el temporizador, el temporizador se reinicia.
+
+    - **Ejecución:** Si el temporizador llega al final de su cuenta regresiva, se ejecuta la función antirrebote.
+
+
+Puede implementar la función debounce de varias maneras, incluida la creación manual de su propia función debouncing. Para simplificar las cosas, usaremos una biblioteca llamada `use-debounce`.
+
+Install use-debounce:
+
+```bash
+npm i use-debounce
+```
+
+Luego en tu componente `<Search>` importa la función `useDebouncedCallback`:
+
+```tsx
+// ...
+import { useDebouncedCallback } from 'use-debounce';
+ 
+// Inside the Search Component...
+const handleSearch = useDebouncedCallback((term) => {
+  console.log(`Searching... ${term}`);
+ 
+  const params = new URLSearchParams(searchParams);
+  if (term) {
+    params.set('query', term);
+  } else {
+    params.delete('query');
+  }
+  replace(`${pathname}?${params.toString()}`);
+}, 300);
+```
+
+Esta función envolverá el contenido de `handleSearch` y solo ejecutará el código después de un tiempo específico una vez que el usuario haya dejado de escribir (300 ms).
+
+Al eliminar el rebote, puede reducir la cantidad de solicitudes enviadas a su base de datos, ahorrando así recursos.
+
+## Agregar paginación
+
+Después de introducir la función de búsqueda, notará que la tabla muestra solo 6 facturas a la vez. Esto se debe a que la función `fetchFilteredInvoices()` en data.ts devuelve un máximo de 6 facturas por página.
+
+Agregar paginación permite a los usuarios navegar por las diferentes páginas para ver todas las facturas. Veamos cómo puedes implementar la paginación usando parámetros de URL, tal como lo hiciste con la búsqueda.
+
+Navegue hasta el componente `<Pagination/>` y notará que es un componente de cliente. No desea recuperar datos del cliente, ya que esto expondría los secretos de su base de datos (recuerde, no está utilizando una capa API). En su lugar, puede recuperar los datos en el servidor y pasarlos al componente como accesorio.
+
+En **/dashboard/invoices/page.tsx**, importe una nueva función llamada `fetchInvoicesPages` y pase la consulta de **searchParams** como argumento:
+
+```tsx
+// ...
+import { fetchInvoicesPages } from '@/app/lib/data';
+ 
+export default async function Page({
+  searchParams,
+}: {
+  searchParams?: {
+    query?: string,
+    page?: string,
+  },
+}) {
+  const query = searchParams?.query || '';
+  const currentPage = Number(searchParams?.page) || 1;
+ 
+  const totalPages = await fetchInvoicesPages(query);
+ 
+  return (
+    // ...
+  );
+}
+```
+
+`fetchInvoicesPages` devuelve el número total de páginas según la consulta de búsqueda. Por ejemplo, si hay 12 facturas que coinciden con la consulta de búsqueda y cada página muestra 6 facturas, entonces el número total de páginas sería 2.
+
+A continuación, pase la propiedad totalPages al componente `<Pagination/>`:
+
+```tsx
+// ...
+ 
+export default async function Page({
+  searchParams,
+}: {
+  searchParams?: {
+    query?: string;
+    page?: string;
+  };
+}) {
+  const query = searchParams?.query || '';
+  const currentPage = Number(searchParams?.page) || 1;
+ 
+  const totalPages = await fetchInvoicesPages(query);
+ 
+  return (
+    <div className="w-full">
+      <div className="flex w-full items-center justify-between">
+        <h1 className={`${lusitana.className} text-2xl`}>Invoices</h1>
+      </div>
+      <div className="mt-4 flex items-center justify-between gap-2 md:mt-8">
+        <Search placeholder="Search invoices..." />
+        <CreateInvoice />
+      </div>
+      <Suspense key={query + currentPage} fallback={<InvoicesTableSkeleton />}>
+        <Table query={query} currentPage={currentPage} />
+      </Suspense>
+      <div className="mt-5 flex w-full justify-center">
+        <Pagination totalPages={totalPages} />
+      </div>
+    </div>
+  );
+}
+```
+
+Su aplicación se interrumpirá temporalmente porque aún no ha implementado la lógica `<Pagination/>`. ¡Hagámoslo ahora!
+
+Navegue hasta el componente `<Pagination/>`. Importe los ganchos `usePathname` y `useSearchParams`. Usaremos esto para obtener la página actual y configurar la nueva página:
+
+```tsx
+'use client';
+ 
+import { ArrowLeftIcon, ArrowRightIcon } from '@heroicons/react/24/outline';
+import clsx from 'clsx';
+import Link from 'next/link';
+import { generatePagination } from '@/app/lib/utils';
+import { usePathname, useSearchParams } from 'next/navigation';
+ 
+export default function Pagination({ totalPages }: { totalPages: number }) {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const currentPage = Number(searchParams.get('page')) || 1;
+ 
+  // ...
+}
+```
+
+A continuación, cree una nueva función dentro del componente `<Pagination>` llamada `createPageURL`. De manera similar a la búsqueda, usará `URLSearchParams` para establecer el nuevo número de página y `pathName` para crear la cadena URL.
+
+```tsx
+'use client';
+ 
+import { ArrowLeftIcon, ArrowRightIcon } from '@heroicons/react/24/outline';
+import clsx from 'clsx';
+import Link from 'next/link';
+import { generatePagination } from '@/app/lib/utils';
+import { usePathname, useSearchParams } from 'next/navigation';
+ 
+export default function Pagination({ totalPages }: { totalPages: number }) {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const currentPage = Number(searchParams.get('page')) || 1;
+ 
+  const createPageURL = (pageNumber: number | string) => {
+    const params = new URLSearchParams(searchParams);
+    params.set('page', pageNumber.toString());
+    return `${pathname}?${params.toString()}`;
+  };
+ 
+  // ...
+}
+```
+
+Aquí hay un desglose de lo que está sucediendo:
+
+`createPageURL` crea una instancia de los parámetros de búsqueda actuales.
+Luego, actualiza el parámetro "**page**" al número de página proporcionado.
+Finalmente, construye la URL completa utilizando el nombre de la ruta y los parámetros de búsqueda actualizados.
+El resto del componente `<Pagination>` se ocupa del estilo y los diferentes estados (primero, último, activo, deshabilitado, etc.). No entraremos en detalles en este curso, pero siéntete libre de revisar el código para ver dónde se llama a `createPageURL`.
+
+Finalmente, cuando el usuario escribe una nueva consulta de búsqueda, desea restablecer el número de página a 1. Puede hacerlo actualizando la función `handleSearch` en su componente `<Search>`:
+
+```tsx
+'use client';
+ 
+import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useDebouncedCallback } from 'use-debounce';
+ 
+export default function Search({ placeholder }: { placeholder: string }) {
+  const searchParams = useSearchParams();
+  const { replace } = useRouter();
+  const pathname = usePathname();
+ 
+  const handleSearch = useDebouncedCallback((term) => {
+    const params = new URLSearchParams(searchParams);
+    params.set('page', '1');
+    if (term) {
+      params.set('query', term);
+    } else {
+      params.delete('query');
+    }
+    replace(`${pathname}?${params.toString()}`);
+  }, 300);
+ 
+```
+
+### Resumen
+
+¡Felicidades! Acaba de implementar la búsqueda y la paginación utilizando parámetros de URL y las API de Next.js.
+
+En resumen, en este capítulo:
+
+- Ha manejado la búsqueda y la paginación con parámetros de búsqueda de URL en lugar del estado del cliente.
+- Has obtenido datos en el servidor.
+- Estás utilizando el hook de enrutador `useRouter` para transiciones más fluidas del lado del cliente.
+
+Estos patrones son diferentes de los que puede estar acostumbrado cuando trabaja con React del lado del cliente, pero con suerte, ahora comprenderá mejor los beneficios de usar parámetros de búsqueda de URL y llevar este estado al servidor.
 
