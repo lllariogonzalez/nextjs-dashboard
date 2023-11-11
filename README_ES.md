@@ -26,7 +26,7 @@ A continuación se ofrece una descripción general de las funciones que aprender
 - [**Mutación de datos:**](#mutación-de-datos) cómo mutar datos usando React Server Actions y revalidar el caché de Next.js.
 - [**Manejo de errores:**](#manejo-de-errores) cómo manejar errores generales y 404 no encontrados.
 - [**Validación y accesibilidad de formularios:**](#mejora-de-la-accesibilidad) cómo realizar la validación de formularios del lado del servidor y consejos para mejorar la accesibilidad.
-- [**Autenticación:**] cómo agregar autenticación a su aplicación usando NextAuth.js y Middleware.
+- [**Autenticación:**](#agregar-autenticación) cómo agregar autenticación a su aplicación usando NextAuth.js y Middleware.
 - [**Metadatos:**] cómo agregar metadatos y preparar su aplicación para compartir en redes sociales.
 
 > ⚠️ Nota ⚠️
@@ -3052,3 +3052,428 @@ export async function updateInvoice(
   redirect('/dashboard/invoices');
 }
 ```
+
+---
+
+## Agregar autenticación
+
+En el capítulo anterior, terminó de construir las rutas de facturas agregando validación de formulario y mejorando la accesibilidad. En este capítulo, agregaremos autenticación a nuestra aplicación. Para ello veremos:
+
+- ¿Qué es la autenticación?
+
+- Cómo agregar autenticación a su aplicación usando NextAuth.js.
+
+- Cómo usar el middleware para redirigir a los usuarios y proteger sus rutas.
+
+- Cómo usar el `useFormStatus` y` useFormState` de React para manejar los estados pendientes y form errors.
+
+### ¿Qué es la autenticación?
+
+La autenticación es una parte clave de muchas aplicaciones web hoy en día. Así es como un sistema verifica si el usuario es quién dice que es.
+
+Un sitio web seguro a menudo utiliza múltiples formas de verificar la identidad de un usuario para obtener una seguridad mejorada. Por ejemplo, después de ingresar su nombre de usuario y contraseña, el sitio puede enviar un código de verificación a su dispositivo o usar una aplicación externa como Google Authenticator. Esta autenticación de 2 factores (2FA) ayuda a aumentar la seguridad. Incluso si alguien aprende su contraseña, no puede acceder a su cuenta sin su token único.
+
+### Autenticación versus Autorización
+
+En el desarrollo web, la autenticación y la autorización sirven para diferentes roles:
+
+- La **autenticación** se trata de asegurarse de que el usuario sea quien dice que es. Estás demostrando su identidad con algo que tiene como un nombre de usuario y una contraseña.
+
+- La **autorización** es el siguiente paso. Una vez que se confirma la identidad de un usuario, la autorización decide qué partes de la aplicación pueden usar.
+
+Por lo tanto, las autenticación verifica que es usted, y la autorización determina a qué puede acceder o hacer en la aplicación.
+
+### Creando la ruta de inicio de sesión
+
+Comience por crear una nueva ruta en su aplicación llamada `/login` y use el siguiente código:
+
+```tsx
+import AcmeLogo from '@/app/ui/acme-logo';
+import LoginForm from '@/app/ui/login-form';
+ 
+export default function LoginPage() {
+  return (
+    <main className="flex items-center justify-center md:h-screen">
+      <div className="relative mx-auto flex w-full max-w-[400px] flex-col space-y-2.5 p-4 md:-mt-32">
+        <div className="flex h-20 w-full items-end rounded-lg bg-blue-500 p-3 md:h-36">
+          <div className="w-32 text-white md:w-36">
+            <AcmeLogo />
+          </div>
+        </div>
+        <LoginForm />
+      </div>
+    </main>
+  );
+}
+```
+
+## NextAuth.js
+
+Usaremos `nextAuth.js` para agregar autenticación a su aplicación. NextAuth.js abstrae gran parte de la complejidad involucrada en la gestión de sesiones, inicio y cierre de sesión, y otros aspectos de la autenticación. Si bien puede implementar manualmente estas funciones, el proceso puede llevar mucho tiempo y ser propenso a errores. NextAuth.js simplifica el proceso, proporcionando una solución unificada para Auth en las aplicaciones Next.js.
+
+ - **Setting up NextAuth.js**
+Establezcamos nextAuth.js en su proyecto. Ejecute el siguiente comando en su terminal: `npm install next-auth@beta bcrypt`
+
+Aquí, está instalando la versión beta de NextAuth.js, que es compatible con Next.js 14. También está instalando bcrypt, que es una biblioteca que lo ayudará a hashear contraseñas.
+
+A continuación, genere una clave secreta para su aplicación. Esta clave se utiliza para cifrar cookies, asegurando la seguridad de las sesiones de usuario. Puede hacer esto ejecutando el siguiente comando en su terminal: `openssl rand -base64 32`
+
+Luego, en su archivo `.env`, notará dos variables: `AUTH_SECRET` and `AUTH_URL`.
+
+Agregue su clave generada a `AUTH_SECRET`
+
+```shell
+AUTH_SECRET=your-secret-key
+AUTH_URL=http://localhost:3000/api/auth
+```
+
+- **Adding the pages option**
+
+Cree un archivo `auth.config.ts` en la raíz de nuestro proyecto que exporta un objeto `authConfig`. Este objeto contendrá las opciones de configuración para NextAuth.js. Por ahora, solo contendrá la opción de page:
+
+```ts
+import type { NextAuthConfig } from 'next-auth';
+ 
+export const authConfig = {
+  pages: {
+    signIn: '/login',
+  },
+};
+```
+
+Puede usar la opción de páginas para especificar la ruta para páginas de inicio de sesión, cierre de sesión y error personalizado. No es necesario, pero si no lo proporciona, NextAuth.js usará sus default sign-in, sign-out, and error pages.
+Al agregar `signIn: '/login'` en nuestra opción de páginas, el usuario será redirigido a nuestra página de inicio de sesión personalizada, en lugar de la página predeterminada de NextAuth.js.
+
+- **Protección de sus rutas con el middleware Next.js**
+
+A continuación, agregue la lógica para proteger sus rutas. Esto evitará que los usuarios accedan a las páginas del tablero a menos que se registren.
+
+> /auth.config.ts
+```ts
+import type { NextAuthConfig } from 'next-auth';
+ 
+export const authConfig = {
+  providers: [],
+  pages: {
+    signIn: '/login',
+  },
+  callbacks: {
+    authorized({ auth, request: { nextUrl } }) {
+      const isLoggedIn = !!auth?.user;
+      const isOnDashboard = nextUrl.pathname.startsWith('/dashboard');
+      if (isOnDashboard) {
+        if (isLoggedIn) return true;
+        return false; // Redirect unauthenticated users to login page
+      } else if (isLoggedIn) {
+        return Response.redirect(new URL('/dashboard', nextUrl));
+      }
+      return true;
+    },
+  },
+} satisfies NextAuthConfig;
+```
+
+La **authorized callback** se utiliza para verificar si la solicitud está autorizada para acceder a una página a través de Next.js Middleware. Se llama antes de completar una solicitud, y recibe un objeto con las propiedades de `auth and request`. La propiedad de `Auth` contiene la sesión del usuario y la propiedad `request` contiene la solicitud entrante.
+
+A continuación, deberá importar el objeto `authConfig` en un archivo de middleware. En la raíz de su proyecto, cree un archivo llamado `middleware.ts` y pegue el siguiente código:
+
+```ts
+import NextAuth from 'next-auth';
+import { authConfig } from './auth.config';
+ 
+export default NextAuth(authConfig).auth;
+ 
+export const config = {
+  // https://nextjs.org/docs/app/building-your-application/routing/middleware#matcher
+  matcher: ['/((?!api|_next/static|_next/image|.png).*)'],
+};
+```
+
+Aquí está inicializando nextAuth.js con el objeto `authConfig` y exportando la propiedad de `auth`.También está utilizando la opción matcher desde el middleware para especificar que debe ejecutarse en rutas específicas.
+
+La ventaja de emplear el middleware para esta tarea es que las rutas protegidas ni siquiera comenzarán a representar hasta que el middleware verifique la autenticación, mejorando tanto la seguridad como el rendimiento de su aplicación.
+
+- **Password hashing**
+
+Para almacenar contraseñas de forma segura, deberá hashearla. Este proceso convierte la contraseña en una cadena de caracteres de longitud fija, que parece aleatoria, proporcionando una capa de seguridad incluso si el hash está expuesto.
+
+En su archivo `seed.js`, hemos utilizado byrypt para hash la contraseña antes de almacenarla en la base de datos. Puede usar byrypt para comparar que la contraseña ingresada por el usuario coincide con la de la base de datos.
+
+Sin embargo, byrypt se basa en las API Node.js que no están disponibles en el middleware Next.js. Para resolver esto, deberá crear un archivo separado que importe byrypt. El nuevo archivo no se importará a su archivo de middleware.
+
+Cree un nuevo archivo llamado `auth.ts` que difunda su objeto `authConfig`:
+
+> /auth.ts
+```ts
+import NextAuth from 'next-auth';
+import { authConfig } from './auth.config';
+ 
+export const { auth, signIn, signOut } = NextAuth({
+  ...authConfig,
+});
+```
+
+- **Adding Credentials provider**
+
+A continuación, deberá agregar la opción de proveedores para nextAuth.js. `providers` es una matriz en la que enumera diferentes opciones de inicio de sesión como Google o GitHub. Para este curso, nos centraremos solo en usar el proveedor de [credenciales](https://authjs.dev/getting-started/providers/credentials-tutorial).
+
+El proveedor de credenciales permite a los usuarios iniciar sesión con un nombre de usuario y una contraseña.
+
+> /auth.ts
+```ts
+import NextAuth from 'next-auth';
+import { authConfig } from './auth.config';
+import Credentials from 'next-auth/providers/credentials';
+ 
+export const { auth, signIn, signOut } = NextAuth({
+  ...authConfig,
+  providers: [Credentials({})],
+});
+```
+
+> Bueno saber: Aunque estamos utilizando el proveedor de credenciales, generalmente se recomienda utilizar proveedores alternativos como OAuth o proveedores de correo electrónico. Vea los documentos [NextAuth.js](https://authjs.dev/getting-started/providers) para obtener una lista completa de opciones.
+
+Después de validar las credenciales, cree una nueva función `getUser` que consulte al usuario de la base de datos.
+
+> /auth.ts
+```ts
+import NextAuth from 'next-auth';
+import Credentials from 'next-auth/providers/credentials';
+import { authConfig } from './auth.config';
+import { sql } from '@vercel/postgres';
+import { z } from 'zod';
+import type { User } from '@/app/lib/definitions';
+import bcrypt from 'bcrypt';
+ 
+async function getUser(email: string): Promise<User | undefined> {
+  try {
+    const user = await sql<User>`SELECT * from USERS where email=${email}`;
+    return user.rows[0];
+  } catch (error) {
+    console.error('Failed to fetch user:', error);
+    throw new Error('Failed to fetch user.');
+  }
+}
+ 
+export const { auth, signIn, signOut } = NextAuth({
+  ...authConfig,
+  providers: [
+    Credentials({
+      async authorize(credentials) {
+        const parsedCredentials = z
+          .object({ email: z.string().email(), password: z.string().min(6) })
+          .safeParse(credentials);
+ 
+        if (parsedCredentials.success) {
+          const { email, password } = parsedCredentials.data;
+          const user = await getUser(email);
+          if (!user) return null;
+        }
+ 
+        return null;
+      },
+    }),
+  ],
+});
+```
+
+Luego, llame a `bcrypt.compare` para verificar si las contraseñas coinciden:
+
+```ts
+import NextAuth from 'next-auth';
+import Credentials from 'next-auth/providers/credentials';
+import { authConfig } from './auth.config';
+import { sql } from '@vercel/postgres';
+import { z } from 'zod';
+import type { User } from '@/app/lib/definitions';
+import bcrypt from 'bcrypt';
+ 
+// ...
+ 
+export const { auth, signIn, signOut } = NextAuth({
+  ...authConfig,
+  providers: [
+    Credentials({
+      async authorize(credentials) {
+        // ...
+ 
+        if (parsedCredentials.success) {
+          const { email, password } = parsedCredentials.data;
+          const user = await getUser(email);
+          if (!user) return null;
+          const passwordsMatch = await bcrypt.compare(password, user.password);
+ 
+          if (passwordsMatch) return user;
+        }
+ 
+        console.log('Invalid credentials');
+        return null;
+      },
+    }),
+  ],
+});
+```
+
+Finalmente, si las contraseñas coinciden, desea devolver al usuario, de lo contrario, devuelva `null` para evitar que el usuario inicie sesión.
+
+### Actualización del formulario de inicio de sesión
+
+Ahora necesita conectar la lógica de autenticación con su formulario de inicio de sesión. En su archivo `actions.ts`, cree una nueva acción llamada `authenticate`. Esta acción debe importar la función de firma de `auth.ts`:
+
+```ts
+import { signIn } from '@/auth';
+ 
+// ...
+ 
+export async function authenticate(
+  prevState: string | undefined,
+  formData: FormData,
+) {
+  try {
+    await signIn('credentials', Object.fromEntries(formData));
+  } catch (error) {
+    if ((error as Error).message.includes('CredentialsSignin')) {
+      return 'CredentialSignin';
+    }
+    throw error;
+  }
+}
+```
+
+Si hay un error de 'credencialsignin', desea devolverlo para que pueda mostrar un mensaje de error apropiado.
+
+Finalmente, en su componente `login-form.tsx`, puede usar `useFormState` para llamar a la acción del servidor y manejar errores de formulario, y usar `useFormStatus` para manejar el estado pendiente del formulario:
+
+> /app/ui/login-form.tsx
+```tsx
+'use client';
+ 
+import { lusitana } from '@/app/ui/fonts';
+import {
+  AtSymbolIcon,
+  KeyIcon,
+  ExclamationCircleIcon,
+} from '@heroicons/react/24/outline';
+import { ArrowRightIcon } from '@heroicons/react/20/solid';
+import { Button } from './button';
+import { useFormState, useFormStatus } from 'react-dom';
+import { authenticate } from '@/app/lib/actions';
+ 
+export default function LoginForm() {
+  const [code, action] = useFormState(authenticate, undefined);
+ 
+  return (
+    <form action={action} className="space-y-3">
+      <div className="flex-1 rounded-lg bg-gray-50 px-6 pb-4 pt-8">
+        <h1 className={`${lusitana.className} mb-3 text-2xl`}>
+          Please log in to continue.
+        </h1>
+        <div className="w-full">
+          <div>
+            <label
+              className="mb-3 mt-5 block text-xs font-medium text-gray-900"
+              htmlFor="email"
+            >
+              Email
+            </label>
+            <div className="relative">
+              <input
+                className="peer block w-full rounded-md border border-gray-200 py-[9px] pl-10 text-sm outline-2 placeholder:text-gray-500"
+                id="email"
+                type="email"
+                name="email"
+                placeholder="Enter your email address"
+                required
+              />
+              <AtSymbolIcon className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-500 peer-focus:text-gray-900" />
+            </div>
+          </div>
+          <div className="mt-4">
+            <label
+              className="mb-3 mt-5 block text-xs font-medium text-gray-900"
+              htmlFor="password"
+            >
+              Password
+            </label>
+            <div className="relative">
+              <input
+                className="peer block w-full rounded-md border border-gray-200 py-[9px] pl-10 text-sm outline-2 placeholder:text-gray-500"
+                id="password"
+                type="password"
+                name="password"
+                placeholder="Enter password"
+                required
+                minLength={6}
+              />
+              <KeyIcon className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-500 peer-focus:text-gray-900" />
+            </div>
+          </div>
+        </div>
+        <LoginButton />
+        <div className="flex h-8 items-end space-x-1">
+          {code === 'CredentialSignin' && (
+            <>
+              <ExclamationCircleIcon className="h-5 w-5 text-red-500" />
+              <p aria-live="polite" className="text-sm text-red-500">
+                Invalid credentials
+              </p>
+            </>
+          )}
+        </div>
+      </div>
+    </form>
+  );
+}
+ 
+function LoginButton() {
+  const { pending } = useFormStatus();
+ 
+  return (
+    <Button className="mt-4 w-full" aria-disabled={pending}>
+      Log in <ArrowRightIcon className="ml-auto h-5 w-5 text-gray-50" />
+    </Button>
+  );
+}
+```
+
+### Agregar la funcionalidad de cierre de sesión
+
+Para agregar la funcionalidad de cierre de sesión, llame a la función `signOut` desde `auth.ts` en su componente `<SideNav>`:
+
+```tsx
+import Link from 'next/link';
+import NavLinks from '@/app/ui/dashboard/nav-links';
+import AcmeLogo from '@/app/ui/acme-logo';
+import { PowerIcon } from '@heroicons/react/24/outline';
+import { signOut } from '@/auth';
+ 
+export default function SideNav() {
+  return (
+    <div className="flex h-full flex-col px-3 py-4 md:px-2">
+      // ...
+      <div className="flex grow flex-row justify-between space-x-2 md:flex-col md:space-x-0 md:space-y-2">
+        <NavLinks />
+        <div className="hidden h-auto w-full grow rounded-md bg-gray-50 md:block"></div>
+        <form
+          action={async () => {
+            'use server';
+            await signOut();
+          }}
+        >
+          <button className="flex h-[48px] grow items-center justify-center gap-2 rounded-md bg-gray-50 p-3 text-sm font-medium hover:bg-sky-100 hover:text-blue-600 md:flex-none md:justify-start md:p-2 md:px-3">
+            <PowerIcon className="w-6" />
+            <div className="hidden md:block">Sign Out</div>
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+```
+
+**Pruébalo**
+Ahora, pruébalo. Debería poder iniciar sesión y salir de su aplicación utilizando las siguientes credenciales:
+
+- **Email:** *user@nextmail.com*
+- **Password:** *123456*
+
