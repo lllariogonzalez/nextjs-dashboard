@@ -4,24 +4,24 @@ import { Metadata } from 'next';
  
 export const metadata: Metadata = {
   title: {
-    template: '%s | Acme Dashboard | @lllariogonzalez',
-    default: 'Acme Dashboard by @lllariogonzalez',
+    template: '%s | Carpool Dashboard | @Group2',
+    default: 'Carpool Dashboard by Group2',
   },
-  description: 'The official Next.js Course Dashboard, built with App Router.',
-  metadataBase: new URL('https://nextjs-dashboard-acme.vercel.app'),
-  authors: [{name: 'Mario Gonzalez', url:'https://www.linkedin.com/in/lllariogonzalez'}],
-  keywords: ['Next.js 14', 'Acme', 'Dashboard', 'nextjs.org/learn', 'Server Actions'],
+  description: 'A carpool application dashboard, built with App Router.',
+  metadataBase: new URL('https://carpool2-alpha.vercel.app/'),
+  authors: [{name: 'Group2', url:'https://www.yale-nus.edu.sg/'}],
+  keywords: ['Next.js 14', 'Carpool', 'Dashboard', 'nextjs.org/learn', 'Server Actions'],
   openGraph: {
-    title: 'Acme Dashboard',
-    description: 'The official Next.js Learn Dashboard built with App Router.',
-    url: 'https://nextjs-dashboard-acme.vercel.app',
+    title: 'Carpool Dashboard',
+    description: 'A carpool application dashboard, built with App Router.',
+    url: 'https://carpool2-alpha.vercel.app/',
     type: 'website',
   },
   twitter: {
-    site: '@acme',
-    description:'The official Next.js Learn Dashboard built with App Router.',
-    title:'Acme Dashboard by @lllariogonzalez',
-    creator:'@lllariogonzalez',
+    site: '@carpool',
+    description:'A carpool application dashboard, built with App Router.',
+    title:'Carpool Dashboard by Group2',
+    creator:'@Group2',
   },
 };
 
